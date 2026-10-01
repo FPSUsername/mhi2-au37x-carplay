@@ -19,8 +19,14 @@ LOG=/tmp/carplay_uninstall.log
 # Route guidance (RGI)
 RGD_SO=$LIB_DIR/librgd_hook.so
 RGD_JAR=$JARS_DIR/rgd_hook.jar
-FRAMES_DIR=$LIB_DIR/rgd_frames
+RENDER=$LIB_DIR/maneuver_render
+ATLAS=$LIB_DIR/flag_atlas.rgba
+BLANK=$LIB_DIR/rgd_blank.png
+SHADER_DIR=$LIB_DIR/shaders
+SUPERVISOR=$LIB_DIR/rgd_render_sup.sh
 SBIN=/mnt/app/armle/usr/sbin
+# Releases up to 2026-09-19 drew maneuvers from pre-drawn pictures kept here.
+FRAMES_DIR=$LIB_DIR/rgd_frames
 
 say() {
     echo "$@"
@@ -86,29 +92,39 @@ else
     say "no shim installed - nothing to undo"
 fi
 
-for f in "$RGD_JAR" "$RGD_SO"; do
+# The supervisor goes before the renderer it starts, so nothing restarts it
+# between the two.  Anything already running keeps running until the reboot
+# this script ends by asking for.
+for f in "$SUPERVISOR" "$RENDER" "$ATLAS" "$BLANK" "$RGD_JAR" "$RGD_SO"; do
     if [ -f "$f" ]; then
         rm -f "$f" && say "removed: $f" || say "!! could not remove $f"
     fi
 done
 
+if [ -d "$SHADER_DIR" ]; then
+    rm -f "$SHADER_DIR"/*.bin 2>/dev/null
+    # The unit has no rmdir, and its rm needs -r for a directory.
+    rm -r "$SHADER_DIR" 2>/dev/null
+    say "removed: $SHADER_DIR"
+fi
+
+# Left behind by a release that drew maneuvers from pre-drawn pictures: about
+# 90 MB of PNGs in three sets.  Explicit paths and explicit file names, never
+# "rm -rf $VAR" - one empty variable there would take the whole lib directory.
 if [ -d "$FRAMES_DIR" ]; then
-    # No `rm -rf` on a directory tree here: the unit's rm has it, but the frame
-    # set is 3600 files and one wrong variable would take the lot with it.
-    # Explicit paths only.
     for stage in small large large_sport; do
         [ -d "$FRAMES_DIR/$stage" ] || continue
         rm -f "$FRAMES_DIR/$stage"/*.png "$FRAMES_DIR/$stage"/frames.idx 2>/dev/null
-        rmdir "$FRAMES_DIR/$stage" 2>/dev/null
+        rm -r "$FRAMES_DIR/$stage" 2>/dev/null
     done
-    rmdir "$FRAMES_DIR" 2>/dev/null
+    rm -r "$FRAMES_DIR" 2>/dev/null
     say "removed: $FRAMES_DIR"
 fi
 
 # Markers the feature reads.  rgd_disable is the user's own off switch; taking
 # it away with the patch is right - there is nothing left for it to disable.
 rm -f /mnt/app/rgd_disable /mnt/app/rgd_cluster_ctx /mnt/app/rgd_rgtype \
-      /mnt/app/rgd_sport /mnt/app/rgd_hook.log 2>/dev/null
+      /mnt/app/rgd_sport /mnt/app/rgd_hook.log /mnt/app/rgd_render.log 2>/dev/null
 
 say ""
 say "--- removing files ---"

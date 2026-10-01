@@ -13,9 +13,11 @@
 #      into /mnt/app/eso/hmi/lib.
 #   4. Adds LD_PRELOAD for the cover-art hook to the carplay child in
 #      smartphone_integrator.json - line-based, no sed (the unit has none).
-#   5. Installs route guidance (RGI): the maneuver frames, the RGI jar, and a
-#      shim in front of mm-ipod that preloads its hook.  Skip it with RGI=0.
-#   6. Tells you to reboot.
+#   5. Installs route guidance (RGI): the RGI jar, the cluster renderer with its
+#      compiled shaders, and a shim in front of mm-ipod that preloads the hook
+#      and starts the renderer's supervisor.  Skip it with RGI=0.
+#   6. Removes the pre-drawn maneuver frames, if an older install left them.
+#   7. Tells you to reboot.
 #
 # Everything is idempotent: running it twice changes nothing the second time.
 # POSIX sh only - no bashisms, and none of sed, awk or dirname: the unit
@@ -34,10 +36,20 @@ LOG=/tmp/carplay_install.log
 RGI=${RGI:-1}
 RGD_SO=$LIB_DIR/librgd_hook.so
 RGD_JAR=$JARS_DIR/rgd_hook.jar
-FRAMES_DIR=$LIB_DIR/rgd_frames
+RENDER=$LIB_DIR/maneuver_render
+ATLAS=$LIB_DIR/flag_atlas.rgba
+BLANK=$LIB_DIR/rgd_blank.png
+SHADER_DIR=$LIB_DIR/shaders
+SUPERVISOR=$LIB_DIR/rgd_render_sup.sh
 SBIN=/mnt/app/armle/usr/sbin
-# Frames need about 90 MB; refuse rather than half-fill the partition.
-FRAMES_KB_NEEDED=95000
+# Releases up to 2026-09-19 shipped ~5400 pre-drawn PNGs here, about 90 MB of
+# them. The renderer replaced the lot, so an upgrade deletes them.
+FRAMES_DIR=$LIB_DIR/rgd_frames
+SHADERS="main.vert main.frag fxaa.vert fxaa.frag"
+
+# Force the sport cluster layout (1) or the classic one (0). Unset means "leave
+# whatever is already there", which is what an upgrade wants.
+SPORT=${SPORT:-}
 
 # No `dirname` either - see the note in custom.sh.  ${0%/*} strips the last
 # /component, but leaves $0 untouched when it has no slash at all, so the
@@ -74,9 +86,12 @@ if [ "$RGI" != "0" ]; then
     for f in rgd_hook.jar librgd_hook.so; do
         [ -f "$BIN_DIR/$f" ] || die "missing payload file: $BIN_DIR/$f (or set RGI=0)"
     done
-    for stage in small large large_sport; do
-        [ -f "$BIN_DIR/rgd_frames/$stage/frames.idx" ] || \
-            die "missing maneuver frames: $BIN_DIR/rgd_frames/$stage (or set RGI=0)"
+    for f in maneuver_render flag_atlas.rgba rgd_blank.png; do
+        [ -f "$BIN_DIR/$f" ] || die "missing payload file: $BIN_DIR/$f (or set RGI=0)"
+    done
+    for s in $SHADERS; do
+        [ -f "$BIN_DIR/shaders/$s.bin" ] || \
+            die "missing compiled shader: $BIN_DIR/shaders/$s.bin (or set RGI=0)"
     done
     say "route guidance: ON (RGI=0 skips it)"
 else
@@ -218,18 +233,6 @@ if [ "$RGI" != "0" ]; then
     say ""
     say "--- route guidance (RGI) ---"
 
-    # Frames are ~5400 small PNGs (three sets).  The unit has no tar, gzip or unzip, so they
-    # travel as plain files and are copied with cp; check there is room first.
-    FREE=`df -k "$LIB_DIR" 2>/dev/null | tail -1`
-    set -- $FREE
-    # df -k prints: filesystem 1K-blocks used available capacity mounted
-    AVAIL=$4
-    case "$AVAIL" in
-        ''|*[!0-9]*) say "note: could not read free space, continuing" ;;
-        *) [ "$AVAIL" -lt "$FRAMES_KB_NEEDED" ] && \
-               die "only ${AVAIL}K free on /mnt/app, the frames need ${FRAMES_KB_NEEDED}K" ;;
-    esac
-
     cp "$BIN_DIR/rgd_hook.jar" "$RGD_JAR" || die "copy rgd_hook.jar failed"
     chmod 755 "$RGD_JAR"
     say "ok: $RGD_JAR"
@@ -239,18 +242,103 @@ if [ "$RGI" != "0" ]; then
     mv "$RGD_SO.new" "$RGD_SO" || die "could not put librgd_hook.so in place"
     say "ok: $RGD_SO"
 
-    # small and large draw the classic layout; large_sport is the well on the
-    # sport layout (the wide tile looks the same on both).  Which one the
-    # player uses is decided by the rgd_sport marker, see SPORT below.
-    for stage in small large large_sport; do
-        [ -d "$FRAMES_DIR/$stage" ] || mkdir -p "$FRAMES_DIR/$stage" || \
-            die "could not create $FRAMES_DIR/$stage"
-        say "copying $stage frames (this takes a minute)..."
-        cp "$BIN_DIR/rgd_frames/$stage"/* "$FRAMES_DIR/$stage/" || \
-            die "copying $stage frames failed"
-        chmod 644 "$FRAMES_DIR/$stage"/* 2>/dev/null
+    # The renderer. A process of its own: it draws the maneuver live into a
+    # window of its own that the cluster composites over the head unit's map,
+    # and the jar above tells it what to draw.
+    cp "$BIN_DIR/maneuver_render" "$RENDER.new" || die "copy maneuver_render failed"
+    chmod 755 "$RENDER.new"
+    mv "$RENDER.new" "$RENDER" || die "could not put maneuver_render in place"
+    say "ok: $RENDER"
+
+    cp "$BIN_DIR/flag_atlas.rgba" "$ATLAS" || die "copy flag_atlas.rgba failed"
+    cp "$BIN_DIR/rgd_blank.png" "$BLANK" || die "copy rgd_blank.png failed"
+    chmod 644 "$ATLAS" "$BLANK"
+    say "ok: $ATLAS"
+    # A fully transparent bitmap. The HMI creates the overlay displayable from
+    # it before the renderer has drawn anything; with no readable bitmap there
+    # the displayable does not exist and the cluster overlay never appears.
+    say "ok: $BLANK"
+
+    # Compiled shaders. This firmware ships no GLSL compiler at all - the GL
+    # driver looks for a plugin that is not in the image - so the renderer loads
+    # its shaders as platform binaries instead of compiling them. Without these
+    # it cannot draw.
+    [ -d "$SHADER_DIR" ] || mkdir -p "$SHADER_DIR" || die "could not create $SHADER_DIR"
+    for s in $SHADERS; do
+        cp "$BIN_DIR/shaders/$s.bin" "$SHADER_DIR/$s.bin" || die "copy $s.bin failed"
     done
-    say "ok: $FRAMES_DIR"
+    chmod 644 "$SHADER_DIR"/*.bin 2>/dev/null
+    say "ok: $SHADER_DIR"
+
+    # The supervisor keeps exactly one renderer alive. Started by the shim
+    # below, so it comes up with the CarPlay session and goes with the ignition.
+    cat > "$SUPERVISOR.new" <<'SUP'
+#!/bin/sh
+# Keeps exactly one maneuver_render alive. Started in the background by the
+# mm-ipod shim; exits when /mnt/app/rgd_disable appears.
+BIN=/mnt/app/eso/hmi/lib/maneuver_render
+LOG=/mnt/app/rgd_render.log
+# The lock lives in RAM on purpose: a reboot must clear it, and a stale lock
+# from a hard power-off must not block the next start.
+LOCK=/dev/shmem/rgd_render_sup.pid
+# Two directories have to be searchable. /eso/lib holds libdisplayinit.so,
+# which the renderer dlopens to create its window; the lib directory is its
+# own, and being in it also lets it find flag_atlas.rgba and shaders/ by
+# relative path.
+LD_LIBRARY_PATH=/mnt/app/eso/hmi/lib:/eso/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH
+cd /mnt/app/eso/hmi/lib 2>/dev/null
+
+[ -f /mnt/app/rgd_disable ] && exit 0
+
+if [ -f "$LOCK" ]; then
+    read old < "$LOCK"
+    # kill -0 only probes, it does not signal. A live pid means a supervisor is
+    # already running and this invocation has nothing to do.
+    if [ -n "$old" ] && kill -0 "$old" 2>/dev/null; then exit 0; fi
+fi
+echo $$ > "$LOCK"
+
+# /mnt/app comes back READ-ONLY after every boot and the shim starts this long
+# before anyone remounts it, so truncating the log fails on a perfectly normal
+# drive. It must not be fatal: fall back to RAM, then to nothing. The subshell
+# matters - a failed redirection on the ":" builtin would otherwise exit this
+# whole script.
+if ! ( : > "$LOG" ) 2>/dev/null; then
+    LOG=/dev/shmem/rgd_render.log
+    ( : > "$LOG" ) 2>/dev/null || LOG=/dev/null
+fi
+
+while [ ! -f /mnt/app/rgd_disable ]; do
+    "$BIN" >> "$LOG" 2>&1
+    # A crash loop must not spin on flash writes.
+    sleep 2
+done
+rm -f "$LOCK"
+SUP
+    chmod 755 "$SUPERVISOR.new"
+    mv "$SUPERVISOR.new" "$SUPERVISOR" || die "could not install $SUPERVISOR"
+    say "ok: $SUPERVISOR"
+
+    # Upgrade from a release that drew maneuvers from pre-drawn pictures: about
+    # 90 MB of PNGs in three sets, which nothing reads any more. Explicit paths
+    # and explicit file names, never "rm -rf $VAR" - one empty variable there
+    # would take the whole lib directory with it.
+    if [ -d "$FRAMES_DIR" ]; then
+        say "removing the old maneuver frames (~90 MB, no longer used)..."
+        for stage in small large large_sport; do
+            [ -d "$FRAMES_DIR/$stage" ] || continue
+            rm -f "$FRAMES_DIR/$stage"/*.png "$FRAMES_DIR/$stage"/frames.idx 2>/dev/null
+            # The unit has no rmdir, and its rm needs -r for a directory.
+            rm -r "$FRAMES_DIR/$stage" 2>/dev/null
+        done
+        rm -r "$FRAMES_DIR" 2>/dev/null
+        if [ -d "$FRAMES_DIR" ]; then
+            say "note: $FRAMES_DIR is still there - its files are gone, the empty directory is harmless"
+        else
+            say "ok: removed $FRAMES_DIR"
+        fi
+    fi
 
     # The layout is normally read from the head unit itself (the cluster's
     # menu reaches it as a skin).  The marker forces the sport layout on a unit
@@ -290,6 +378,11 @@ if [ "$RGI" != "0" ]; then
 # Off switch: touch /mnt/app/rgd_disable, then replug the phone.
 [ -f /mnt/app/rgd_disable ] || LD_PRELOAD=/mnt/app/eso/hmi/lib/librgd_hook.so
 export LD_PRELOAD
+# The cluster renderer is a process of its own, and this shim is the one thing
+# that already runs exactly when a CarPlay session starts.  Its supervisor is a
+# singleton, so the replug that restarts mm-ipod does not stack copies.
+[ -f /mnt/app/rgd_disable ] || [ ! -x /mnt/app/eso/hmi/lib/rgd_render_sup.sh ] || \
+    /mnt/app/eso/hmi/lib/rgd_render_sup.sh &
 exec /mnt/app/armle/usr/sbin/rgd_real/mm-ipod "$@"
 SHIM
     chmod 755 "$SBIN/mm-ipod.new"
@@ -302,7 +395,9 @@ say ""
 say "--- installed files ---"
 ls -l "$JARS_DIR/dpad_hook.jar" "$JARS_DIR/coverart_hook.jar" "$SO_DEST" 2>&1 | while IFS= read -r l; do say "$l"; done
 if [ "$RGI" != "0" ]; then
-    ls -l "$RGD_JAR" "$RGD_SO" "$SBIN/mm-ipod" 2>&1 | while IFS= read -r l; do say "$l"; done
+    ls -l "$RGD_JAR" "$RGD_SO" "$RENDER" "$ATLAS" "$BLANK" "$SUPERVISOR" "$SBIN/mm-ipod" 2>&1 \
+        | while IFS= read -r l; do say "$l"; done
+    ls -l "$SHADER_DIR" 2>&1 | while IFS= read -r l; do say "$l"; done
 fi
 
 say ""
@@ -322,6 +417,8 @@ if [ "$RGI" != "0" ]; then
     say ""
     say "Route guidance is installed and on.  Start a route in Apple Maps or"
     say "Google Maps on the phone and the maneuver appears in the cluster."
+    say "The renderer's own log:"
+    say "  cat /mnt/app/rgd_render.log"
     say "To turn it off later, without uninstalling anything:"
     say "  touch /mnt/app/rgd_disable   (then reboot)"
     say "force the sport cluster layout / back to automatic, no reboot needed:"

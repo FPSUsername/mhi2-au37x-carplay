@@ -5,12 +5,13 @@
 # to repair it afterwards, so pin the line endings here instead.
 *.sh text eol=lf
 
-# Payload - never touch these.
-*.jar binary
-*.so  binary
-*.jpg binary
-*.png binary
-
-# Payload - never touch these.
-*.gif binary
-*.idx binary
+# Payload - never touch these. The renderer binary has no extension, so it is
+# named outright; .bin is the compiled shaders, .rgba the texture atlas.
+*.jar  binary
+*.so   binary
+*.jpg  binary
+*.png  binary
+*.gif  binary
+*.bin  binary
+*.rgba binary
+bin/maneuver_render binary

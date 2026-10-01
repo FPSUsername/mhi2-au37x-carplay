@@ -4,7 +4,8 @@ Three patches for Audi MHI2 head units on the **`MHI2_ER_AU37x`** train:
 
 - **Route guidance (RGI)** — CarPlay turn-by-turn maneuvers in the Virtual Cockpit:
   the arrow, the distance to it and the street, in the cluster's own maneuver tile.
-  Stock shows them only for the built-in navigation.
+  Stock shows them only for the built-in navigation. The arrow is drawn live on the
+  head unit, in 3D, over the cluster's own map.
 - **Cover art** — CarPlay album artwork on the Virtual Cockpit's now-playing widget.
   Stock forwards title/artist/album to the cluster but never the picture.
 - **Touchpad → D-pad** — the MMI touchpad navigates CarPlay menus. Stock bridges the
@@ -48,11 +49,12 @@ Three requirements worth knowing up front:
 - **The D-pad patch needs no coding**, and is self-contained: copy `bin/dpad_hook.jar`
   into `/mnt/app/eso/hmi/lsd/jars/` and you are done. It is the lowest-risk way to try
   any of this.
-- **Route guidance needs no coding either**, but it does need about 90 MB free on
-  `/mnt/app` for the maneuver frames, and it replaces the `mm-ipod` binary on that
-  partition with a small shim (the original is kept beside it). Skip it at install
-  time with `RGI=0`, or turn it off later with one file — see below. It follows the
-  cluster's layout, classic or sport, by itself.
+- **Route guidance needs no coding either**, but it runs a renderer process of its
+  own and replaces the `mm-ipod` binary on `/mnt/app` with a small shim that starts
+  it (the original is kept beside it). About 1.5 MB of files, no longer the 90 MB
+  earlier releases needed. Skip it at install time with `RGI=0`, or turn it off
+  later with one file — see below. It follows the cluster's layout, classic or
+  sport, by itself.
 
 ### The sport cluster layout
 
@@ -76,6 +78,34 @@ ssh root@172.16.250.248 'mount -uw /mnt/app; rm /mnt/app/rgd_sport'      # back 
 No reboot needed. At install time the same is `SPORT=1 sh install.sh`, or an empty file
 named `SPORT` next to `install.sh` on the SD card.
 
+### No shader compiler, and what that means for you
+
+Nothing, in use — it is worth knowing only because it shapes what is in `bin/`.
+
+The GL driver on these units looks for NVIDIA's shader-compiler plugin and the firmware
+does not ship it, so `glCompileShader` fails on this hardware for any shader at all.
+What does work is `glShaderBinary`: the driver takes a shader already compiled into its
+own binary format. `bin/shaders/` holds the four the renderer needs, in that format, and
+the renderer loads them instead of compiling anything. The `.glsl` sources they were
+built from are in the development repository.
+
+The practical consequence is that **the shaders cannot be edited on the unit**, and a
+build of the renderer has to travel with the matching blobs. If a blob is missing the
+renderer falls back to compiling the source, which on this firmware simply fails, and
+the cluster tile stays empty — `/mnt/app/rgd_render.log` says which path each shader
+took.
+
+### Lane guidance
+
+When the phone publishes lane information, it is drawn as a strip of arrows along the
+bottom of the tile: the lanes you may take highlighted, the others dimmed, up to eight
+of them with an overflow marker beyond that. Apple Maps and Google Maps both publish it
+on motorway junctions.
+
+Exercised so far against recorded and synthetic route data, not yet confirmed on a live
+route in traffic. If the strip misbehaves, it hides with everything else when route
+guidance is switched off.
+
 ### Which navigation apps work
 
 Route guidance draws whatever the phone publishes over CarPlay, so it depends on the app:
@@ -96,7 +126,10 @@ change on this side.
 |---|---|
 | `bin/rgd_hook.jar` | HMI patch: turns the phone's route guidance into cluster maneuvers and drives the maneuver tile |
 | `bin/librgd_hook.so` | Native hook (ARM/QNX), `LD_PRELOAD`ed into `mm-ipod`: asks iOS for route guidance and forwards it |
-| `bin/rgd_frames/` | The pre-drawn maneuver animations, ~5400 PNGs in three sets (classic small and large stage, sport small stage). The cluster driver has no shader compiler, so the arrows are drawn ahead of time and played back as frames |
+| `bin/maneuver_render` | The renderer (ARM/QNX): a process of its own that draws the maneuver live into a window the cluster composites over the head unit's map |
+| `bin/shaders/` | The renderer's shaders, compiled. This firmware ships no GLSL compiler, so they are shipped as platform binaries — see "No shader compiler" below |
+| `bin/flag_atlas.rgba` | Texture atlas for the animated destination flag |
+| `bin/rgd_blank.png` | A fully transparent bitmap. The HMI creates the overlay from it before the renderer has drawn its first frame |
 | `bin/coverart_hook.jar` | HMI patch: pushes the artwork to the cluster and answers its picture requests |
 | `bin/dpad_hook.jar` | HMI patch: touchpad drag → CarPlay D-pad |
 | `bin/libcarplay_hook.so` | Native hook (ARM/QNX), `LD_PRELOAD`ed into `dio_manager`: pulls the artwork out of iAP2, decodes it, writes a 170×170 PNG |
@@ -107,11 +140,18 @@ change on this side.
 Exact sizes, worth checking after any download:
 
 ```
-bin/libcarplay_hook.so   124917
-bin/coverart_hook.jar     29048
-bin/dpad_hook.jar         11108
-bin/librgd_hook.so       188111
-bin/rgd_hook.jar         122946
+bin/libcarplay_hook.so       124917
+bin/coverart_hook.jar         29048
+bin/dpad_hook.jar             11108
+bin/librgd_hook.so           188111
+bin/rgd_hook.jar             158597
+bin/maneuver_render          130135
+bin/flag_atlas.rgba          917504
+bin/rgd_blank.png                310
+bin/shaders/main.vert.bin       1060
+bin/shaders/main.frag.bin      11132
+bin/shaders/fxaa.vert.bin        472
+bin/shaders/fxaa.frag.bin       2112
 ```
 
 **On Windows, download this repository fresh** (clone again, or Code → Download ZIP).
@@ -131,7 +171,7 @@ ssh root@172.16.250.248 'sh /mnt/app/root/carplay/install.sh'
 ```
 
 Then reboot. Do not stage the files under `/tmp` — it holds no directories on this unit.
-The copy is a few minutes: most of it is the maneuver frames. To install everything
+To install everything
 *except* route guidance, run the installer as `RGI=0 sh /mnt/app/root/carplay/install.sh`;
 to force the sport cluster layout (not normally needed), as
 `SPORT=1 sh /mnt/app/root/carplay/install.sh`.
@@ -144,7 +184,10 @@ next to `install.sh` on the card; to force the sport cluster layout, one named `
 Full walkthrough of both, plus a scripts-free manual install and the list of everything
 that gets changed: **[Installation](https://github.com/chefranov/mhi2-au37x-carplay/wiki/Installation)**.
 
-Upgrading is just running `install.sh` again — no need to uninstall first.
+Upgrading is just running `install.sh` again — no need to uninstall first. Coming from a
+release before 2026-10-01, the installer also deletes the pre-drawn maneuver frames it
+used to put in `/mnt/app/eso/hmi/lib/rgd_frames/`, which frees about 90 MB on that
+partition. Nothing reads them any more.
 
 ## Verify
 
@@ -173,10 +216,18 @@ mean, and what to do when they are missing:
 
 Route guidance needs no marker to check: start a route in Apple Maps or Google Maps
 with the phone plugged in, and the maneuver appears in the cluster tile within a second
-or two. Its own log is always on, small and bounded:
+or two. Two logs, both always on:
 
 ```sh
-cat /mnt/app/rgd_hook.log
+cat /mnt/app/rgd_hook.log      # the native hook, small and bounded
+cat /mnt/app/rgd_render.log    # the renderer
+```
+
+The renderer's log says where each shader came from, and that is the line to look at if
+the tile stays empty:
+
+```
+render: main.frag from blob /mnt/app/eso/hmi/lib/shaders/main.frag.bin (11132 bytes, status 0)
 ```
 
 ## Turning route guidance off
@@ -188,8 +239,12 @@ ssh root@172.16.250.248 'mount -uw /mnt/app; touch /mnt/app/rgd_disable'
 ```
 
 Reboot, and the unit behaves as if the patch were not there: the cluster keeps its own
-navigation, and nothing of ours is loaded into `mm-ipod` or the HMI. Delete the file and
-reboot to turn it back on. The other two patches are unaffected either way.
+navigation, nothing of ours is loaded into `mm-ipod` or the HMI, and the renderer is not
+started. Delete the file and reboot to turn it back on. The other two patches are
+unaffected either way.
+
+The same file also stops the renderer while the unit is running: its supervisor checks
+for it between restarts, so the next time it would come back up it exits instead.
 
 While it is on, CarPlay owns the maneuver tile whenever a route is running on the phone,
 and the built-in navigation gets it back the moment that route ends or is cancelled.
@@ -217,6 +272,12 @@ dropping a fetch when the phone has already moved to another track, retrying a f
 bytes have not arrived yet, and reusing artwork already built.
 
 Route guidance follows the same lineage: the BAP protocol work, the cluster-side
-constants and the Java half's shape are Luka's. The maneuver frames are drawn by his
-renderer; this unit's driver ships no shader compiler, so instead of running that
-renderer on the head unit the frames are drawn ahead of time and played back.
+constants and the Java half's shape are Luka's, and so is the renderer — the maneuver
+geometry, the lane panel's layout rules and the destination-flag atlas shipped here are
+his work. `bin/maneuver_render` is a port of it to C99 for this stack, drawing through a
+client window the cluster composites rather than seizing a stock displayable.
+
+Earlier releases of this repository could not run that renderer at all: the driver on
+these units has no shader compiler. They drew the arrows ahead of time instead and
+played them back as ~5400 pictures. Shipping the shaders compiled removed that
+detour.
