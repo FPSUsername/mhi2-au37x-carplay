@@ -92,8 +92,7 @@ built from are in the development repository.
 The practical consequence is that **the shaders cannot be edited on the unit**, and a
 build of the renderer has to travel with the matching blobs. If a blob is missing the
 renderer falls back to compiling the source, which on this firmware simply fails, and
-the cluster tile stays empty — `/mnt/app/rgd_render.log` says which path each shader
-took.
+the cluster tile stays empty — the renderer's log says which path each shader took.
 
 ### Lane guidance
 
@@ -143,8 +142,8 @@ Exact sizes, worth checking after any download:
 bin/libcarplay_hook.so       124917
 bin/coverart_hook.jar         29048
 bin/dpad_hook.jar             11108
-bin/librgd_hook.so           188111
-bin/rgd_hook.jar             158597
+bin/librgd_hook.so           188215
+bin/rgd_hook.jar             158617
 bin/maneuver_render          130135
 bin/flag_atlas.rgba          917504
 bin/rgd_blank.png                310
@@ -219,8 +218,17 @@ with the phone plugged in, and the maneuver appears in the cluster tile within a
 or two. Two logs, both always on:
 
 ```sh
-cat /mnt/app/rgd_hook.log      # the native hook, small and bounded
-cat /mnt/app/rgd_render.log    # the renderer
+cat /dev/shmem/rgd_hook.log      # the native hook, small and bounded
+cat /dev/shmem/rgd_render.log    # the renderer
+```
+
+Both live in RAM, which means they are lost when the ignition goes off — deliberately,
+because the renderer writes a line or two per second and `/mnt/app` is flash. Read them
+with the car still on, or keep them on flash for a drive you want to study:
+
+```sh
+touch /mnt/app/carplay_log_persist   # then reboot; logs move to /mnt/app/*.log
+rm /mnt/app/carplay_log_persist      # back to RAM
 ```
 
 The renderer's log says where each shader came from, and that is the line to look at if

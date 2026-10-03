@@ -278,6 +278,10 @@ if [ "$RGI" != "0" ]; then
 # mm-ipod shim; exits when /mnt/app/rgd_disable appears.
 BIN=/mnt/app/eso/hmi/lib/maneuver_render
 LOG=/mnt/app/rgd_render.log
+# ...but only while the shared persist marker is there. The renderer writes a
+# line or two per second and /mnt/app is NAND, so by default the log goes to RAM
+# and is lost with the ignition. Copy it off before switching the car off.
+[ -f /mnt/app/carplay_log_persist ] || LOG=/dev/shmem/rgd_render.log
 # The lock lives in RAM on purpose: a reboot must clear it, and a stale lock
 # from a hard power-off must not block the next start.
 LOCK=/dev/shmem/rgd_render_sup.pid
@@ -417,8 +421,12 @@ if [ "$RGI" != "0" ]; then
     say ""
     say "Route guidance is installed and on.  Start a route in Apple Maps or"
     say "Google Maps on the phone and the maneuver appears in the cluster."
-    say "The renderer's own log:"
-    say "  cat /mnt/app/rgd_render.log"
+    say "Its own two logs, in RAM and lost with the ignition so that route"
+    say "guidance does not wear the flash:"
+    say "  cat /dev/shmem/rgd_hook.log      (the native hook)"
+    say "  cat /dev/shmem/rgd_render.log    (the renderer)"
+    say "to keep those two on /mnt/app across an ignition cycle instead:"
+    say "  touch /mnt/app/carplay_log_persist   (then reboot)"
     say "To turn it off later, without uninstalling anything:"
     say "  touch /mnt/app/rgd_disable   (then reboot)"
     say "force the sport cluster layout / back to automatic, no reboot needed:"

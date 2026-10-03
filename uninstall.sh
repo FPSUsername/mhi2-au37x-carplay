@@ -121,10 +121,13 @@ if [ -d "$FRAMES_DIR" ]; then
     say "removed: $FRAMES_DIR"
 fi
 
-# Markers the feature reads.  rgd_disable is the user's own off switch; taking
+# Markers the patches read.  rgd_disable is the user's own off switch; taking
 # it away with the patch is right - there is nothing left for it to disable.
+# carplay_verbose and carplay_log_persist only steer logging of code that is
+# about to be gone.
 rm -f /mnt/app/rgd_disable /mnt/app/rgd_cluster_ctx /mnt/app/rgd_rgtype \
-      /mnt/app/rgd_sport /mnt/app/rgd_hook.log /mnt/app/rgd_render.log 2>/dev/null
+      /mnt/app/rgd_sport /mnt/app/rgd_hook.log /mnt/app/rgd_render.log \
+      /mnt/app/carplay_verbose /mnt/app/carplay_log_persist 2>/dev/null
 
 say ""
 say "--- removing files ---"
