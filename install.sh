@@ -16,8 +16,11 @@
 #   5. Installs route guidance (RGI): the RGI jar, the cluster renderer with its
 #      compiled shaders, and a shim in front of mm-ipod that preloads the hook
 #      and starts the renderer's supervisor.  Skip it with RGI=0.
-#   6. Removes the pre-drawn maneuver frames, if an older install left them.
-#   7. Tells you to reboot.
+#   6. Installs the CarPlay map in the cluster (AltScreen): its renderer, the
+#      renderer's compiled shaders and supervisor, and the marker that turns
+#      it on.  Needs route guidance; skip it alone with ALTSCREEN=0.
+#   7. Removes the pre-drawn maneuver frames, if an older install left them.
+#   8. Tells you to reboot.
 #
 # Everything is idempotent: running it twice changes nothing the second time.
 # POSIX sh only - no bashisms, and none of sed, awk or dirname: the unit
@@ -46,6 +49,17 @@ SBIN=/mnt/app/armle/usr/sbin
 # them. The renderer replaced the lot, so an upgrade deletes them.
 FRAMES_DIR=$LIB_DIR/rgd_frames
 SHADERS="main.vert main.frag fxaa.vert fxaa.frag"
+
+# The CarPlay map in the cluster.  Rides on route guidance (the jar declares its
+# cluster context, the route-guidance supervisor starts its renderer), so
+# RGI=0 leaves it out too.  ALTSCREEN=0 leaves out only this.
+ALTSCREEN=${ALTSCREEN:-1}
+[ "$RGI" = "0" ] && ALTSCREEN=0
+ALT_RENDER=$LIB_DIR/altscreen_render
+ALT_SUP=$LIB_DIR/altscreen_sup.sh
+ALT_SHADER_DIR=$LIB_DIR/altscreen_shaders
+ALT_SHADERS="main.vert video.frag intro.frag"
+ALT_ON=/mnt/app/altscreen_inject
 
 # Force the sport cluster layout (1) or the classic one (0). Unset means "leave
 # whatever is already there", which is what an upgrade wants.
@@ -94,6 +108,18 @@ if [ "$RGI" != "0" ]; then
             die "missing compiled shader: $BIN_DIR/shaders/$s.bin (or set RGI=0)"
     done
     say "route guidance: ON (RGI=0 skips it)"
+    if [ "$ALTSCREEN" != "0" ]; then
+        for f in altscreen_render altscreen_sup.sh; do
+            [ -f "$BIN_DIR/$f" ] || die "missing payload file: $BIN_DIR/$f (or set ALTSCREEN=0)"
+        done
+        for s in $ALT_SHADERS; do
+            [ -f "$BIN_DIR/altscreen_shaders/$s.bin" ] || \
+                die "missing compiled shader: $BIN_DIR/altscreen_shaders/$s.bin (or set ALTSCREEN=0)"
+        done
+        say "CarPlay map in the cluster: ON (ALTSCREEN=0 skips it)"
+    else
+        say "CarPlay map in the cluster: SKIPPED"
+    fi
 else
     say "route guidance: SKIPPED (RGI=0)"
 fi
@@ -277,11 +303,7 @@ if [ "$RGI" != "0" ]; then
 # Keeps exactly one maneuver_render alive. Started in the background by the
 # mm-ipod shim; exits when /mnt/app/rgd_disable appears.
 BIN=/mnt/app/eso/hmi/lib/maneuver_render
-LOG=/mnt/app/rgd_render.log
-# ...but only while the shared persist marker is there. The renderer writes a
-# line or two per second and /mnt/app is NAND, so by default the log goes to RAM
-# and is lost with the ignition. Copy it off before switching the car off.
-[ -f /mnt/app/carplay_log_persist ] || LOG=/dev/shmem/rgd_render.log
+LOG=/dev/null
 # The lock lives in RAM on purpose: a reboot must clear it, and a stale lock
 # from a hard power-off must not block the next start.
 LOCK=/dev/shmem/rgd_render_sup.pid
@@ -303,15 +325,9 @@ if [ -f "$LOCK" ]; then
 fi
 echo $$ > "$LOCK"
 
-# /mnt/app comes back READ-ONLY after every boot and the shim starts this long
-# before anyone remounts it, so truncating the log fails on a perfectly normal
-# drive. It must not be fatal: fall back to RAM, then to nothing. The subshell
-# matters - a failed redirection on the ":" builtin would otherwise exit this
-# whole script.
-if ! ( : > "$LOG" ) 2>/dev/null; then
-    LOG=/dev/shmem/rgd_render.log
-    ( : > "$LOG" ) 2>/dev/null || LOG=/dev/null
-fi
+# The CarPlay map in the cluster rides the same start: its own script decides
+# whether to run (it is installed and switched on) and keeps itself single.
+[ -x /mnt/app/eso/hmi/lib/altscreen_sup.sh ] && /mnt/app/eso/hmi/lib/altscreen_sup.sh &
 
 while [ ! -f /mnt/app/rgd_disable ]; do
     "$BIN" >> "$LOG" 2>&1
@@ -394,6 +410,35 @@ SHIM
     say "ok: $SBIN/mm-ipod (shim)"
 fi
 
+# ---------------------------------------------------------------- altscreen
+if [ "$ALTSCREEN" != "0" ]; then
+    say ""
+    say "--- CarPlay map in the cluster ---"
+    cp "$BIN_DIR/altscreen_render" "$ALT_RENDER.new" || die "copy altscreen_render failed"
+    chmod 755 "$ALT_RENDER.new"
+    mv "$ALT_RENDER.new" "$ALT_RENDER" || die "could not put altscreen_render in place"
+    say "ok: $ALT_RENDER"
+
+    cp "$BIN_DIR/altscreen_sup.sh" "$ALT_SUP.new" || die "copy altscreen_sup.sh failed"
+    chmod 755 "$ALT_SUP.new"
+    mv "$ALT_SUP.new" "$ALT_SUP" || die "could not put altscreen_sup.sh in place"
+    say "ok: $ALT_SUP"
+
+    [ -d "$ALT_SHADER_DIR" ] || mkdir -p "$ALT_SHADER_DIR" || die "could not create $ALT_SHADER_DIR"
+    for s in $ALT_SHADERS; do
+        cp "$BIN_DIR/altscreen_shaders/$s.bin" "$ALT_SHADER_DIR/$s.bin" || die "copy $s.bin failed"
+    done
+    chmod 644 "$ALT_SHADER_DIR"/*.bin 2>/dev/null
+    say "ok: $ALT_SHADER_DIR"
+
+    touch "$ALT_ON" || die "could not create $ALT_ON"
+    say "ok: switched on"
+elif [ -f "$ALT_ON" ]; then
+    rm -f "$ALT_ON"
+    say ""
+    say "CarPlay map in the cluster: switched off (ALTSCREEN=0); its files stay"
+fi
+
 # ---------------------------------------------------------------- done
 say ""
 say "--- installed files ---"
@@ -402,6 +447,9 @@ if [ "$RGI" != "0" ]; then
     ls -l "$RGD_JAR" "$RGD_SO" "$RENDER" "$ATLAS" "$BLANK" "$SUPERVISOR" "$SBIN/mm-ipod" 2>&1 \
         | while IFS= read -r l; do say "$l"; done
     ls -l "$SHADER_DIR" 2>&1 | while IFS= read -r l; do say "$l"; done
+fi
+if [ "$ALTSCREEN" != "0" ]; then
+    ls -l "$ALT_RENDER" "$ALT_SUP" "$ALT_SHADER_DIR" 2>&1 | while IFS= read -r l; do say "$l"; done
 fi
 
 say ""
@@ -415,23 +463,22 @@ say "=== DONE ==="
 say "REBOOT the unit for the patches to load."
 say "Wait a few seconds first - the writes above must reach flash."
 say ""
-say "After the reboot, plug in an iPhone and check:"
-say "  cat /tmp/carplay_hook.log"
+say "After the reboot, plug in an iPhone by cable."
 if [ "$RGI" != "0" ]; then
     say ""
     say "Route guidance is installed and on.  Start a route in Apple Maps or"
     say "Google Maps on the phone and the maneuver appears in the cluster."
-    say "Its own two logs, in RAM and lost with the ignition so that route"
-    say "guidance does not wear the flash:"
-    say "  cat /dev/shmem/rgd_hook.log      (the native hook)"
-    say "  cat /dev/shmem/rgd_render.log    (the renderer)"
-    say "to keep those two on /mnt/app across an ignition cycle instead:"
-    say "  touch /mnt/app/carplay_log_persist   (then reboot)"
     say "To turn it off later, without uninstalling anything:"
     say "  touch /mnt/app/rgd_disable   (then reboot)"
     say "force the sport cluster layout / back to automatic, no reboot needed:"
     say "  touch /mnt/app/rgd_sport  /  rm /mnt/app/rgd_sport"
     say "and to turn it back on, delete that file and reboot."
+fi
+if [ "$ALTSCREEN" != "0" ]; then
+    say ""
+    say "The CarPlay map is in the cluster in place of the stock one.  A long"
+    say "press of the left steering-wheel roller swaps it for the stock map and"
+    say "back; the choice is kept."
 fi
 say ""
 say "This log: $LOG"

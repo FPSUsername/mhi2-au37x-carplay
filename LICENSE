@@ -1,0 +1,32 @@
+MHI2 AU37x CarPlay patches
+Copyright (c) 2026 Eugene Chefranov. All rights reserved, except as granted below.
+
+This software is free. It is published so that owners of these cars can use it
+without paying anyone for it, and that is the condition it comes with.
+
+1. Use. You may download, install and use this software on any vehicle, free
+   of charge.
+
+2. No sale. You may not sell, rent or license this software, charge for copies
+   of it, for access to it, or for installing or activating it, or include it
+   in any product, device, kit or service that is sold or paid for.
+
+3. Sharing. You may pass on copies only complete, unmodified and free of
+   charge, with this license and a link to
+   https://github.com/chefranov/mhi2-au37x-carplay
+
+4. Modified copies. You may not distribute modified versions of the binaries,
+   jars, shaders or scripts in this repository, nor any software derived from
+   them by reverse engineering, decompiling or disassembling.
+
+5. No warranty. The software is provided "as is", without warranty of any
+   kind. You use it at your own risk; the author is not liable for any damage
+   to vehicles, devices or data, or for any other loss.
+
+Third-party components keep their own licenses and are not covered by the
+terms above:
+
+- Parts of the route-guidance and cover-art work are derived from
+  luka-dev/mib2q-carplay-rgi (https://github.com/luka-dev/mib2q-carplay-rgi),
+  including the destination-flag texture atlas; those parts belong to their
+  author.

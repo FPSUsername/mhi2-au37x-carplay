@@ -15,8 +15,9 @@
 # itself), put an empty file named SPORT next to install.sh - see README,
 # "The sport cluster layout".
 # To install everything except route guidance, put an empty file named NO_RGI
-# on the card beside install.sh - there is no way to pass an environment
-# variable through the M.I.B. menu.
+# on the card beside install.sh; to leave out only the CarPlay map in the
+# cluster, one named NO_ALTSCREEN.  There is no way to pass an environment
+# variable through the M.I.B. menu, and the files combine.
 
 set -u
 
@@ -62,14 +63,23 @@ echo "payload: $PAYLOAD"
 if [ -f "$PAYLOAD/UNINSTALL" ]; then
     echo "UNINSTALL marker present - removing the patches"
     SRC_DIR="$PAYLOAD" sh "$PAYLOAD/uninstall.sh"
-elif [ -f "$PAYLOAD/NO_RGI" ]; then
-    echo "NO_RGI marker present - installing without route guidance"
-    SRC_DIR="$PAYLOAD" RGI=0 sh "$PAYLOAD/install.sh"
-elif [ -f "$PAYLOAD/SPORT" ]; then
-    echo "SPORT marker present - forcing the sport cluster layout for route guidance"
-    SRC_DIR="$PAYLOAD" SPORT=1 sh "$PAYLOAD/install.sh"
 else
-    SRC_DIR="$PAYLOAD" sh "$PAYLOAD/install.sh"
+    R=1
+    S=
+    A=1
+    if [ -f "$PAYLOAD/NO_RGI" ]; then
+        echo "NO_RGI marker present - installing without route guidance"
+        R=0
+    fi
+    if [ -f "$PAYLOAD/SPORT" ]; then
+        echo "SPORT marker present - forcing the sport cluster layout for route guidance"
+        S=1
+    fi
+    if [ -f "$PAYLOAD/NO_ALTSCREEN" ]; then
+        echo "NO_ALTSCREEN marker present - installing without the CarPlay map in the cluster"
+        A=0
+    fi
+    SRC_DIR="$PAYLOAD" RGI=$R SPORT=$S ALTSCREEN=$A sh "$PAYLOAD/install.sh"
 fi
 
 echo ""

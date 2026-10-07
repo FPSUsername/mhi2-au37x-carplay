@@ -15,3 +15,4 @@
 *.bin  binary
 *.rgba binary
 bin/maneuver_render binary
+bin/altscreen_render binary

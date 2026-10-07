@@ -123,11 +123,21 @@ fi
 
 # Markers the patches read.  rgd_disable is the user's own off switch; taking
 # it away with the patch is right - there is nothing left for it to disable.
-# carplay_verbose and carplay_log_persist only steer logging of code that is
-# about to be gone.
 rm -f /mnt/app/rgd_disable /mnt/app/rgd_cluster_ctx /mnt/app/rgd_rgtype \
-      /mnt/app/rgd_sport /mnt/app/rgd_hook.log /mnt/app/rgd_render.log \
-      /mnt/app/carplay_verbose /mnt/app/carplay_log_persist 2>/dev/null
+      /mnt/app/rgd_sport /mnt/app/rgd_hook.log /mnt/app/rgd_render.log 2>/dev/null
+
+# The CarPlay map in the cluster: its renderer, supervisor, shaders, its on
+# switch and the steering-wheel choice.
+for f in "$LIB_DIR/altscreen_render" "$LIB_DIR/altscreen_sup.sh"; do
+    [ -f "$f" ] && { rm -f "$f" && say "removed: $f" || say "!! could not remove $f"; }
+done
+if [ -d "$LIB_DIR/altscreen_shaders" ]; then
+    rm -f "$LIB_DIR/altscreen_shaders"/*.bin 2>/dev/null
+    rm -r "$LIB_DIR/altscreen_shaders" 2>/dev/null
+    say "removed: $LIB_DIR/altscreen_shaders"
+fi
+rm -f /mnt/app/altscreen_inject /mnt/app/altscreen_cluster_off \
+      /mnt/app/altscreen_render.log /mnt/app/altscreen_probe.log 2>/dev/null
 
 say ""
 say "--- removing files ---"
