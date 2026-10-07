@@ -20,7 +20,10 @@
 #      renderer's compiled shaders and supervisor, and the marker that turns
 #      it on.  Needs route guidance; skip it alone with ALTSCREEN=0.
 #   7. Removes the pre-drawn maneuver frames, if an older install left them.
-#   8. Tells you to reboot.
+#   8. Undoes a part left out this time (RGI=0, ALTSCREEN=0) that an earlier
+#      install put there, and drops files earlier releases used and this one
+#      does not.
+#   9. Tells you to reboot.
 #
 # Everything is idempotent: running it twice changes nothing the second time.
 # POSIX sh only - no bashisms, and none of sed, awk or dirname: the unit
@@ -433,11 +436,49 @@ if [ "$ALTSCREEN" != "0" ]; then
 
     touch "$ALT_ON" || die "could not create $ALT_ON"
     say "ok: switched on"
-elif [ -f "$ALT_ON" ]; then
-    rm -f "$ALT_ON"
-    say ""
-    say "CarPlay map in the cluster: switched off (ALTSCREEN=0); its files stay"
+else
+    # Left out on purpose (ALTSCREEN=0, or RGI=0 which it rides on): take away
+    # whatever an earlier install put there, so nothing of it keeps running.
+    if [ -f "$ALT_ON" ] || [ -f "$ALT_RENDER" ] || [ -d "$ALT_SHADER_DIR" ]; then
+        say ""
+        say "--- CarPlay map in the cluster: removing an earlier install ---"
+        rm -f "$ALT_ON" "$ALT_SUP" "$ALT_RENDER" /mnt/app/altscreen_cluster_off
+        if [ -d "$ALT_SHADER_DIR" ]; then
+            rm -f "$ALT_SHADER_DIR"/*.bin 2>/dev/null
+            rm -r "$ALT_SHADER_DIR" 2>/dev/null
+        fi
+        say "ok: removed"
+    fi
 fi
+
+# ---------------------------------------------------------------- RGI=0
+# Route guidance left out of an install that had it: undo it the way
+# uninstall.sh does - the shim first, so that mm-ipod starts stock even if
+# anything after it fails - instead of leaving the old version running beside
+# the new jars.
+if [ "$RGI" = "0" ] && { [ -f "$RGD_JAR" ] || [ -f "$SBIN/rgd_real/mm-ipod" ]; }; then
+    say ""
+    say "--- route guidance: removing an earlier install (RGI=0) ---"
+    if [ -f "$SBIN/mm-ipod.orig" ]; then
+        cat "$SBIN/mm-ipod.orig" > "$SBIN/mm-ipod" && chmod 755 "$SBIN/mm-ipod" \
+            && say "restored $SBIN/mm-ipod" || die "could not restore $SBIN/mm-ipod"
+    elif [ -f "$SBIN/rgd_real/mm-ipod" ]; then
+        cat "$SBIN/rgd_real/mm-ipod" > "$SBIN/mm-ipod" && chmod 755 "$SBIN/mm-ipod" \
+            && say "restored $SBIN/mm-ipod" || die "could not restore $SBIN/mm-ipod"
+    fi
+    for f in "$SUPERVISOR" "$RENDER" "$ATLAS" "$BLANK" "$RGD_JAR" "$RGD_SO"; do
+        [ -f "$f" ] && { rm -f "$f" && say "removed: $f" || say "!! could not remove $f"; }
+    done
+    if [ -d "$SHADER_DIR" ]; then
+        rm -f "$SHADER_DIR"/*.bin 2>/dev/null
+        rm -r "$SHADER_DIR" 2>/dev/null
+        say "removed: $SHADER_DIR"
+    fi
+fi
+
+# Files earlier releases read or wrote and this one does not.
+rm -f /mnt/app/carplay_verbose /mnt/app/carplay_log_persist \
+      /mnt/app/rgd_hook.log /mnt/app/rgd_hook.log.prev /mnt/app/rgd_render.log 2>/dev/null
 
 # ---------------------------------------------------------------- done
 say ""
