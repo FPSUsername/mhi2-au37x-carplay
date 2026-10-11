@@ -7,6 +7,9 @@
 #
 #     Advanced Settings -> Run Custom Script
 #
+# M.I.B. V3.6 and later name it "Run individual script" and run
+# /mod/command.sh instead; that file only calls this one.
+#
 # It finds the payload on the card and runs install.sh. To uninstall instead,
 # create an empty file named UNINSTALL next to install.sh on the card
 # (/mod/carplay/UNINSTALL) and run the custom script again.

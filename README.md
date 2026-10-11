@@ -49,8 +49,18 @@ scp -O -r bin install.sh uninstall.sh root@172.16.250.248:/mnt/app/root/carplay/
 ssh root@172.16.250.248 'sh /mnt/app/root/carplay/install.sh'
 ```
 
-From an M.I.B. SD card: `custom.sh` at `/mod/custom.sh`, the rest of the repository at
-`/mod/carplay/`, then `Advanced Settings → Run Custom Script`.
+From an M.I.B. SD card: `custom.sh` and `command.sh` in `/mod/`, the rest of the
+repository at `/mod/carplay/`, then `Advanced Settings → Run Custom Script` or, on
+M.I.B. V3.6 and later, `Advanced Settings → Run individual script` (it runs
+`/mod/command.sh`; "Nothing to do!" means that file is missing).
+
+```
+/mod/custom.sh
+/mod/command.sh
+/mod/carplay/install.sh
+/mod/carplay/uninstall.sh
+/mod/carplay/bin/...
+```
 
 Reboot afterwards. Running the installer again upgrades in place.
 
@@ -80,7 +90,8 @@ Something not right: **[Troubleshooting](https://github.com/chefranov/mhi2-au37x
 ssh root@172.16.250.248 'sh /mnt/app/root/carplay/uninstall.sh'
 ```
 
-or an empty `/mod/carplay/UNINSTALL` on the card and the custom script again. Reboot.
+or an empty `/mod/carplay/UNINSTALL` on the card and the same M.I.B. menu item again.
+Reboot.
 
 ## Credits
 
