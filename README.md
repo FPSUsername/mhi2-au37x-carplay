@@ -27,9 +27,11 @@ Tested on `MHI2_ER_AU37x_P5089`, `MU1326`, part `8V1035036A` — Audi A3 8V with
 Virtual Cockpit and the HARMAN iAP2 stack. Other `MHI2_ER_AU37x_*` builds are expected
 to work but are not verified: **[read Compatibility before installing](https://github.com/chefranov/mhi2-au37x-carplay/wiki/Compatibility)**.
 
-The installer checks the firmware train first and stops, changing nothing, on
-anything that is not `MHI2_*_AU37x_*`. Other trains carry other versions of the HMI
-classes these patches replace, and installing there can leave the main screen black.
+Audi Q2 (`MHI2_*_AU276_*`) runs the same HMI classes, and the release is confirmed
+working on a Q2. The installer checks the firmware train first and stops, changing
+nothing, on anything that is not `MHI2_*_AU37x_*` or `MHI2_*_AU276_*`. Other trains
+carry other versions of the HMI classes these patches replace, and installing there
+can leave the main screen black.
 If another CarPlay mod is installed on the unit, remove it first.
 
 - **CarPlay map in the cluster** needs the iPhone **by cable** — wireless CarPlay

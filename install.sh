@@ -8,7 +8,7 @@
 #
 # What it does:
 #   0. Checks the firmware train and stops, changing nothing, on anything
-#      that is not MHI2_*_AU37x_*.
+#      that is not MHI2_*_AU37x_* or MHI2_*_AU276_* (Audi Q2).
 #   1. Remounts /mnt/app and /mnt/system read-write.
 #   2. Backs up every file it is going to change, once, as <file>.orig.
 #   3. Copies the jars into the HMI's jar directory and the native hooks
@@ -137,11 +137,14 @@ fi
 # trains carry other versions of them: on MHI2_US_AUG22 neither the D-pad nor
 # route guidance even compiles, and on the unit that is a black main screen.
 # So anything that is not MHI2_*_AU37x_* stops here, before a single write.
+# MHI2_*_AU276_* (Audi Q2) is let through: its HMI classes are identical, and
+# the release is confirmed working on a Q2.
 #
 # Two sources, the way M.I.B. reads them.  First the text file the software
 # update leaves on rcc's persist partition; then the EEPROM, 19 bytes at 0x3A0,
 # through modifyE2P on rcc.  The unit has no xxd, sed, tr or printf, so the
-# EEPROM bytes are compared as hex: "MHI2_" at 0..4, "_AU37x_" at 7..13.  A
+# EEPROM bytes are compared as hex: "MHI2_" at 0..4, "_AU37x_" or "_AU276_"
+# at 7..13.  A
 # trailing CR in the text file is harmless: the pattern ends in *.
 TRAIN=""
 for f in /net/rcc/mnt/efs-persist/SWDL/CachedTrain.txt /mnt/efs-persist/SWDL/CachedTrain.txt; do
@@ -153,7 +156,7 @@ done
 
 TRAIN_OK=""
 case "$TRAIN" in
-    MHI2_*_AU37[xX]_*) TRAIN_OK=1 ;;
+    MHI2_*_AU37[xX]_*|MHI2_*_AU276_*) TRAIN_OK=1 ;;
     "") ;;
     *) TRAIN_OK=0 ;;
 esac
@@ -168,6 +171,8 @@ if [ -z "$TRAIN_OK" ]; then
     case "$HEX" in
         " 4"[dD]" 48 49 32 5"[fF]" "??" "??" 5"[fF]" 41 55 33 37 "[57]"8 5"[fF]*)
             TRAIN_OK=1; TRAIN="MHI2_??_AU37x_* (from EEPROM)" ;;
+        " 4"[dD]" 48 49 32 5"[fF]" "??" "??" 5"[fF]" 41 55 32 37 36 5"[fF]*)
+            TRAIN_OK=1; TRAIN="MHI2_??_AU276_* (from EEPROM)" ;;
         "") ;;
         *) TRAIN_OK=0; TRAIN="(EEPROM bytes:$HEX)" ;;
     esac
@@ -176,9 +181,9 @@ fi
 case "$TRAIN_OK" in
     1) say "firmware train: $TRAIN - ok" ;;
     0) say "!! firmware train: $TRAIN"
-       say "!! These patches are for MHI2_*_AU37x_* firmware only. They replace stock"
-       say "!! HMI classes of that firmware, and on another train they can leave the"
-       say "!! main screen black. See"
+       say "!! These patches are for MHI2_*_AU37x_* and MHI2_*_AU276_* firmware only."
+       say "!! They replace stock HMI classes of that firmware, and on another train"
+       say "!! they can leave the main screen black. See"
        say "!! https://github.com/chefranov/mhi2-au37x-carplay/wiki/Compatibility"
        die "unsupported firmware train" ;;
     *) say "!! could not read the firmware train (no CachedTrain.txt, no EEPROM answer)."
