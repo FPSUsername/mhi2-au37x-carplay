@@ -1,0 +1,44 @@
+# Pushing a tag vX.Y.Z publishes a release: two SD card archives built from
+# that tag, SHA256SUMS, and the tag's section of CHANGELOG.md as the notes.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the SD card archives
+        run: |
+          set -eu
+          VER=$GITHUB_REF_NAME
+          mkdir -p stage/mod/carplay dist
+          cp custom.sh command.sh stage/mod/
+          cp -r install.sh uninstall.sh bin stage/mod/carplay/
+          echo "$VER" > stage/mod/carplay/VERSION
+          (cd stage && zip -q -r -X ../dist/mhi2-au37x-carplay-$VER-sd.zip mod)
+          # The same card with the UNINSTALL marker: running the script removes
+          # everything instead of installing.
+          touch stage/mod/carplay/UNINSTALL
+          (cd stage && zip -q -r -X ../dist/mhi2-au37x-carplay-$VER-uninstall-sd.zip mod)
+          (cd dist && sha256sum *.zip) > dist/SHA256SUMS
+          (cd stage/mod/carplay && find bin -type f | LC_ALL=C sort | xargs sha256sum) >> dist/SHA256SUMS
+
+      - name: Release notes from CHANGELOG.md
+        run: |
+          awk -v v="$GITHUB_REF_NAME" '
+            /^## / { if (p) exit; if (index($0, "## " v " ") == 1 || $0 == "## " v) { p = 1; next } }
+            p' CHANGELOG.md > notes.md
+          test -s notes.md || { echo "no CHANGELOG.md section for $GITHUB_REF_NAME"; exit 1; }
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "$GITHUB_REF_NAME" --notes-file notes.md

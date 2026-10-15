@@ -149,6 +149,13 @@ for f in "$JARS_DIR/coverart_hook.jar" "$JARS_DIR/dpad_hook.jar" "$SO_DEST"; do
     fi
 done
 
+# M.I.B.'s NavActiveIgnore, if the installer switched it off: back as it was.
+for f in "$JARS_DIR"/*.carplay-off; do
+    [ -f "$f" ] || continue
+    mv "$f" "${f%.carplay-off}" && say "switched back on: ${f%.carplay-off}" \
+        || say "!! could not restore ${f%.carplay-off}"
+done
+
 say ""
 say "--- flushing writes ---"
 sync

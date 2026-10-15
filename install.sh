@@ -8,7 +8,10 @@
 #
 # What it does:
 #   0. Checks the firmware train and stops, changing nothing, on anything
-#      that is not MHI2_*_AU37x_* or MHI2_*_AU276_* (Audi Q2).
+#      that is not MHI2_*_AU37x_* or MHI2_*_AU276_* (Audi Q2), or when
+#      another CarPlay/HMI mod is on the unit (MIBSI, mib2q-carplay-rgi,
+#      unknown jars; IGNORE_CONFLICTS=1 lets unknown jars through).
+#      M.I.B.'s NavActiveIgnore jar is switched off, uninstall puts it back.
 #   1. Remounts /mnt/app and /mnt/system read-write.
 #   2. Backs up every file it is going to change, once, as <file>.orig.
 #   3. Copies the jars into the HMI's jar directory and the native hooks
@@ -95,6 +98,10 @@ die() {
 : > "$LOG" 2>/dev/null
 say "=== MHI2 AU37x CarPlay patches - install ==="
 say "payload: $BIN_DIR"
+if [ -f "$SRC_DIR/VERSION" ]; then
+    read -r VERSION < "$SRC_DIR/VERSION"
+    say "release: $VERSION"
+fi
 
 # ---------------------------------------------------------------- payload
 for f in coverart_hook.jar dpad_hook.jar libcarplay_hook.so; do
@@ -197,6 +204,114 @@ if [ ! -f /mnt/app/armle/usr/lib/libiap2client.so.1 ]; then
     say "!! Cover art needs the HARMAN iAP2 stack. The DPAD patch is unaffected."
 fi
 
+# ---------------------------------------------------------------- other mods
+# Other CarPlay and cluster mods replace the same stock HMI classes, or the same
+# processes (dio_manager, mm-ipod, the iAP2 driver).  Two of them on one unit is
+# how the main screen goes black: whichever jar the HMI loads first wins, and a
+# mix of two versions of one class can keep the HMI from starting at all.  So
+# look before writing anything, and stop on what is known to clash.
+#
+# Jars nobody here recognises stop the install too, because a black screen is
+# the price of guessing wrong.  IGNORE_CONFLICTS=1 (an empty IGNORE_CONFLICTS
+# file on the card) lets them through; it does not override the known clashes.
+IGNORE_CONFLICTS=${IGNORE_CONFLICTS:-0}
+LSD_SH=/mnt/app/eso/hmi/lsd/lsd.sh
+[ -f "$LSD_SH" ] || LSD_SH=/eso/hmi/lsd/lsd.sh
+CONFLICT=0
+NAVIGNORE=""
+UNKNOWN=""
+
+say ""
+say "--- other mods ---"
+
+# MIBSI: replaces dio_manager, gal, the iAP2 driver and lsd.sh, and keeps its
+# files under directories named after itself.
+for d in /mnt/app/root/mibsi-* /eso/lib/mibsi-* /mnt/app/eso/lib/mibsi-* /eso/mibsi-*; do
+    if [ -e "$d" ]; then
+        say "!! MIBSI is installed ($d)."
+        say "!!   Remove it with its own uninstall card first, then run this again."
+        CONFLICT=1
+        break
+    fi
+done
+
+# Anything put on the HMI classpath ahead of the stock jars.  Stock lsd.sh only
+# ever appends to BOOTCLASSPATH; a line that prepends is somebody's mod.
+if [ -f "$LSD_SH" ] && grep -q -e 'BOOTCLASSPATH="/' -e '/mnt/app/root/' "$LSD_SH"; then
+    say "!! $LSD_SH has been changed: it puts other code on the HMI classpath."
+    say "!!   Uninstall whatever changed it first (MIBSI does this)."
+    CONFLICT=1
+fi
+
+# mib2q-carplay-rgi and its forks: their own startup hooks and a patched
+# smartphone_integrator.
+if [ -f /mnt/app/root/hooks/carplay_startup.sh ] || \
+   [ -f /mnt/app/eso/bin/apps/smartphone_integrator.carplay-stock ]; then
+    say "!! Another CarPlay mod is installed (mib2q-carplay-rgi or a fork, /mnt/app/root/hooks/)."
+    say "!!   Uninstall it first."
+    CONFLICT=1
+fi
+
+# A wrapper in front of mm-ipod that is not ours.  Ours keeps the real binary
+# in rgd_real/; without that directory mm-ipod must still be the stock binary.
+# grep finds nothing in a binary on this unit, which is exactly the test.
+if [ "$RGI" != "0" ] && [ ! -f "$SBIN/rgd_real/mm-ipod" ] && \
+   grep -q '^#!' "$SBIN/mm-ipod" 2>/dev/null; then
+    say "!! $SBIN/mm-ipod is a script, not the stock binary - another mod wraps it."
+    say "!!   Uninstall that mod first, or install with RGI=0 (NO_RGI on the card)."
+    CONFLICT=1
+fi
+
+# The jars the HMI loads.  lsd.sh puts every *.jar and *.zip in this directory
+# on the classpath, so the names say what is there.
+for j in "$JARS_DIR"/*.jar "$JARS_DIR"/*.zip; do
+    [ -f "$j" ] || continue
+    n=${j##*/}
+    case "$n" in
+        AppDevelopment.jar|DevelopmentStubEvo.jar|RemoteHMI-Libs-Ext.jar|diag.jar|\
+        lang_data.zip|locale.zip|xEventRecorder.jar|xEventRecorderEvo.jar|\
+        xTcpKeyPanel.jar|xTcpLog.jar)
+            ;;  # stock
+        dpad_hook.jar|coverart_hook.jar|rgd_hook.jar|pdc_hook.jar|vehdata_hook.jar)
+            ;;  # this project
+        NavActiveIgnore.jar|navignore_audi.jar|navignore_vw.jar)
+            NAVIGNORE="$NAVIGNORE $n" ;;
+        carplay_hook.jar|carplay_hook_cn.jar)
+            say "!! $n is another CarPlay mod (mib2q-carplay-rgi or a fork). Uninstall it first."
+            CONFLICT=1 ;;
+        mhi2-*-hmi-prototype.jar|mhi2-*-vc-bridge.jar)
+            say "!! $n belongs to MIBSI. Uninstall MIBSI first."
+            CONFLICT=1 ;;
+        *)
+            UNKNOWN="$UNKNOWN $n" ;;
+    esac
+done
+
+if [ -n "$UNKNOWN" ]; then
+    say "!! Jars this installer does not know, in $JARS_DIR:"
+    for n in $UNKNOWN; do say "!!   $n"; done
+    if [ "$IGNORE_CONFLICTS" = "1" ]; then
+        say "!! IGNORE_CONFLICTS is set - going on anyway."
+    else
+        say "!!   If they are another HMI or CarPlay mod, uninstall it first."
+        say "!!   If you know they are harmless, run again with IGNORE_CONFLICTS=1"
+        say "!!   (or an empty IGNORE_CONFLICTS file next to install.sh on the card)."
+        CONFLICT=1
+    fi
+fi
+
+[ "$CONFLICT" = "0" ] || die "another mod is in the way - see above"
+
+# M.I.B.'s NavActiveIgnore replaces org.dsi.ifc.carplay.AppState so that every
+# app state and owner reads 0, and the HMI loses track of what CarPlay owns.
+# It is switched off further down by a rename that lsd.sh no longer picks up;
+# uninstall.sh puts it back.
+if [ -n "$NAVIGNORE" ]; then
+    say "M.I.B. NavActiveIgnore found:$NAVIGNORE - it will be switched off (uninstall puts it back)"
+else
+    say "ok: no other mods found"
+fi
+
 # ---------------------------------------------------------------- writable
 say ""
 say "--- remounting partitions read-write ---"
@@ -221,6 +336,11 @@ backup_once() {
 say ""
 say "--- backups ---"
 backup_once "$CFG"
+
+for n in $NAVIGNORE; do
+    mv "$JARS_DIR/$n" "$JARS_DIR/$n.carplay-off" || die "could not switch off $JARS_DIR/$n"
+    say "switched off: $JARS_DIR/$n -> $n.carplay-off"
+done
 # The jars and the .so are new files - nothing stock is replaced, so an
 # uninstall is just deleting them again.
 

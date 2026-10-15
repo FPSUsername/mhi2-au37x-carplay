@@ -10,7 +10,7 @@ CarPlay additions for Audi MHI2 head units on the **`MHI2_ER_AU37x`** train:
 - **Cover art** — CarPlay album artwork on the cluster's now-playing widget.
 - **Touchpad → D-pad** — the MMI touchpad navigates CarPlay menus.
 
-Prebuilt binaries, installed over a network cable or from an M.I.B. SD card.
+Prebuilt binaries, installed from an M.I.B. SD card or over a network cable.
 
 > **Use at your own risk.** Everything is reversible, but read
 > [Recovery](https://github.com/chefranov/mhi2-au37x-carplay/wiki/Troubleshooting#recovery)
@@ -43,33 +43,47 @@ If another CarPlay mod is installed on the unit, remove it first.
 
 ## Install
 
-Over a network cable:
+Download the `…-sd.zip` of the latest release from
+**[Releases](https://github.com/chefranov/mhi2-au37x-carplay/releases)**. What changed in
+each release is listed there and in the [CHANGELOG](CHANGELOG.md).
+
+**From an SD card (M.I.B.):**
+
+1. Unpack the archive. It contains a single folder, `mod`.
+2. Copy that `mod` folder to the root of an empty FAT32 card. Eject the card safely.
+   Don't drag it over an existing `mod` folder on a Mac: Finder replaces the folder, it
+   doesn't merge them.
+3. Insert the card, then in M.I.B. run `Advanced Settings → Run Custom Script`. On
+   M.I.B. V3.6 and later the item is `Advanced Settings → Run individual script`.
+4. Read the log on screen, then **reboot the unit** (see below).
+
+**Over a network cable:** unpack the archive, then from the folder that contains `mod`:
 
 ```sh
 ssh root@172.16.250.248 'mount -uw /mnt/app; mkdir -p /mnt/app/root/carplay'
-scp -O -r bin install.sh uninstall.sh root@172.16.250.248:/mnt/app/root/carplay/
+scp -O -r mod/carplay/* root@172.16.250.248:/mnt/app/root/carplay/
 ssh root@172.16.250.248 'sh /mnt/app/root/carplay/install.sh'
 ```
 
-From an M.I.B. SD card: `custom.sh` and `command.sh` in `/mod/`, the rest of the
-repository at `/mod/carplay/`, then `Advanced Settings → Run Custom Script` or, on
-M.I.B. V3.6 and later, `Advanced Settings → Run individual script` (it runs
-`/mod/command.sh`; "Nothing to do!" means that file is missing).
+**Reboot.** The patches load only after a reboot. Hold the button combination for your
+MMI until the screen goes dark. On the A3/S3 8V that is **NAV/MAP + RADIO + the big
+rotary knob**. Over SSH: `on -f rcc /usr/apps/mib2_ioc_flash reboot`.
 
-```
-/mod/custom.sh
-/mod/command.sh
-/mod/carplay/install.sh
-/mod/carplay/uninstall.sh
-/mod/carplay/bin/...
-```
+Running the installer again upgrades in place.
 
-Reboot afterwards. Running the installer again upgrades in place.
+**Before installing, the installer checks:**
 
-| Leave out | Cable | SD card (empty file next to `install.sh`) |
+- **The firmware train.** On anything other than `MHI2_*_AU37x_*` or `MHI2_*_AU276_*` it
+  stops without changing anything.
+- **Other mods.** It stops if MIBSI, another CarPlay mod, or jars it does not know are on
+  the unit. Remove the other mod first. M.I.B.'s NavActiveIgnore is switched off, and
+  uninstalling switches it back on.
+
+| Option | Cable | SD card (empty file in `mod/carplay/`) |
 |---|---|---|
-| route guidance and the cluster map | `RGI=0 sh install.sh` | `NO_RGI` |
-| only the cluster map | `ALTSCREEN=0 sh install.sh` | `NO_ALTSCREEN` |
+| leave out route guidance and the cluster map | `RGI=0 sh install.sh` | `NO_RGI` |
+| leave out only the cluster map | `ALTSCREEN=0 sh install.sh` | `NO_ALTSCREEN` |
+| let unknown jars through | `IGNORE_CONFLICTS=1 sh install.sh` | `IGNORE_CONFLICTS` |
 
 Step by step, and what gets changed on the unit:
 **[Installation](https://github.com/chefranov/mhi2-au37x-carplay/wiki/Installation)**.
@@ -92,8 +106,8 @@ Something not right: **[Troubleshooting](https://github.com/chefranov/mhi2-au37x
 ssh root@172.16.250.248 'sh /mnt/app/root/carplay/uninstall.sh'
 ```
 
-or an empty `/mod/carplay/UNINSTALL` on the card and the same M.I.B. menu item again.
-Reboot.
+or from the card: the release's `…-uninstall-sd.zip`, copied the same way as for the
+install, and the same M.I.B. menu item. Reboot.
 
 ## Credits
 
