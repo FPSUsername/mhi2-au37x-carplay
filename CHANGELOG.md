@@ -3,6 +3,11 @@
 Each release is on the [Releases](https://github.com/chefranov/mhi2-au37x-carplay/releases)
 page, with a ready-made SD card archive.
 
+## Unreleased
+
+- The installer checks for another mod's `LD_PRELOAD` in `dio_manager` before changing
+  anything. Before, it found it only after the jars were already copied.
+
 ## v1.0.0 — 2026-10-15
 
 The first numbered release. It contains everything below, plus:

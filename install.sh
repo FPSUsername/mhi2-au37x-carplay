@@ -262,6 +262,22 @@ if [ "$RGI" != "0" ] && [ ! -f "$SBIN/rgd_real/mm-ipod" ] && \
     CONFLICT=1
 fi
 
+# Somebody else's LD_PRELOAD on the carplay child, i.e. inside dio_manager.  The
+# config step below refuses this too, but by then the jars are already copied;
+# asking here leaves the unit untouched.
+if ! grep "libcarplay_hook.so" "$CFG" > /dev/null 2>&1; then
+    while IFS= read -r line || [ -n "$line" ]; do
+        case "$line" in
+            *IPL_CONFIG_DIR_DIO_MANAGER*LD_PRELOAD*|*LD_PRELOAD*IPL_CONFIG_DIR_DIO_MANAGER*)
+                say "!! dio_manager already has an LD_PRELOAD of its own in $CFG:"
+                say "!!   $line"
+                say "!!   Another mod hooks into CarPlay. Uninstall it first."
+                CONFLICT=1
+                ;;
+        esac
+    done < "$CFG"
+fi
+
 # The jars the HMI loads.  lsd.sh puts every *.jar and *.zip in this directory
 # on the classpath, so the names say what is there.
 for j in "$JARS_DIR"/*.jar "$JARS_DIR"/*.zip; do
