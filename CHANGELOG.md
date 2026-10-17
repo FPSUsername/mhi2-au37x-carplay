@@ -3,6 +3,13 @@
 Each release is on the [Releases](https://github.com/chefranov/mhi2-au37x-carplay/releases)
 page, with a ready-made SD card archive.
 
+## v1.1.1 — 2026-10-17
+
+- **The missed-call indicator in the cluster clears.** The Tel key on the steering wheel
+  or opening the phone on the head unit clears it, as with a Bluetooth phone. Before, it
+  stayed lit until the next answered or outgoing call. Calls missed before the phone was
+  connected no longer light it: the iPhone already shows them.
+
 ## v1.1.0 — 2026-10-17
 
 - **The cluster's phone tab works with CarPlay.** Instead of "Your iPhone is in Apple
@@ -25,9 +32,6 @@ page, with a ready-made SD card archive.
   that do not ask for it, such as the Carlinkit 2Air (#25). Off by default.
 - The installer checks for another mod's `LD_PRELOAD` in `dio_manager` before changing
   anything. Before, it found it only after the jars were already copied.
-
-Known: a missed call lights the cluster's missed-call indicator, and opening the list in
-the cluster does not clear it yet; it clears with the next answered or outgoing call.
 
 ## v1.0.0 — 2026-10-15
 
