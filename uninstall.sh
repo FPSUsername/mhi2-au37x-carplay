@@ -136,7 +136,7 @@ if [ -d "$LIB_DIR/altscreen_shaders" ]; then
     rm -r "$LIB_DIR/altscreen_shaders" 2>/dev/null
     say "removed: $LIB_DIR/altscreen_shaders"
 fi
-rm -f /mnt/app/altscreen_inject /mnt/app/altscreen_cluster_off \
+rm -f /mnt/app/altscreen_inject /mnt/app/altscreen_force /mnt/app/altscreen_cluster_off \
       /mnt/app/altscreen_render.log /mnt/app/altscreen_probe.log 2>/dev/null
 
 say ""

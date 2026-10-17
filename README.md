@@ -83,6 +83,7 @@ Running the installer again upgrades in place.
 |---|---|---|
 | leave out route guidance and the cluster map | `RGI=0 sh install.sh` | `NO_RGI` |
 | leave out only the cluster map | `ALTSCREEN=0 sh install.sh` | `NO_ALTSCREEN` |
+| offer the cluster map to a wireless adapter that does not ask for it | `WIRELESS_MAP=1 sh install.sh` | `WIRELESS_MAP` |
 | let unknown jars through | `IGNORE_CONFLICTS=1 sh install.sh` | `IGNORE_CONFLICTS` |
 
 Step by step, and what gets changed on the unit:

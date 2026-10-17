@@ -19,7 +19,9 @@
 # "The sport cluster layout".
 # To install everything except route guidance, put an empty file named NO_RGI
 # on the card beside install.sh; to leave out only the CarPlay map in the
-# cluster, one named NO_ALTSCREEN.  If the installer stops on jars it does not
+# cluster, one named NO_ALTSCREEN.  An empty WIRELESS_MAP file offers the
+# cluster map to a wireless adapter that does not ask for it (see the wiki,
+# Compatibility).  If the installer stops on jars it does not
 # know and you are sure they are harmless, an empty IGNORE_CONFLICTS file lets
 # it go on.  There is no way to pass an environment
 # variable through the M.I.B. menu, and the files combine.
@@ -84,12 +86,17 @@ else
         echo "NO_ALTSCREEN marker present - installing without the CarPlay map in the cluster"
         A=0
     fi
+    W=0
+    if [ -f "$PAYLOAD/WIRELESS_MAP" ]; then
+        echo "WIRELESS_MAP marker present - offering the cluster map to wireless adapters"
+        W=1
+    fi
     I=0
     if [ -f "$PAYLOAD/IGNORE_CONFLICTS" ]; then
         echo "IGNORE_CONFLICTS marker present - unknown jars will not stop the install"
         I=1
     fi
-    SRC_DIR="$PAYLOAD" RGI=$R SPORT=$S ALTSCREEN=$A IGNORE_CONFLICTS=$I sh "$PAYLOAD/install.sh"
+    SRC_DIR="$PAYLOAD" RGI=$R SPORT=$S ALTSCREEN=$A WIRELESS_MAP=$W IGNORE_CONFLICTS=$I sh "$PAYLOAD/install.sh"
 fi
 
 echo ""

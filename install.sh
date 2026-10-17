@@ -68,6 +68,12 @@ ALT_SUP=$LIB_DIR/altscreen_sup.sh
 ALT_SHADER_DIR=$LIB_DIR/altscreen_shaders
 ALT_SHADERS="main.vert video.frag intro.frag"
 ALT_ON=/mnt/app/altscreen_inject
+# Offer the cluster screen to a wireless adapter that does not ask for it (the
+# Carlinkit 2Air, #25).  Opt-in: an adapter that cannot handle a second screen
+# may take it for its main one.  WIRELESS_MAP=1 (an empty WIRELESS_MAP file on
+# the card) switches it on; every other install switches it off again.
+WIRELESS_MAP=${WIRELESS_MAP:-0}
+ALT_FORCE=/mnt/app/altscreen_force
 
 # Force the sport cluster layout (1) or the classic one (0). Unset means "leave
 # whatever is already there", which is what an upgrade wants.
@@ -633,13 +639,19 @@ if [ "$ALTSCREEN" != "0" ]; then
 
     touch "$ALT_ON" || die "could not create $ALT_ON"
     say "ok: switched on"
+    if [ "$WIRELESS_MAP" = "1" ]; then
+        touch "$ALT_FORCE" || die "could not create $ALT_FORCE"
+        say "ok: offered to wireless adapters too (WIRELESS_MAP)"
+    else
+        rm -f "$ALT_FORCE"
+    fi
 else
     # Left out on purpose (ALTSCREEN=0, or RGI=0 which it rides on): take away
     # whatever an earlier install put there, so nothing of it keeps running.
     if [ -f "$ALT_ON" ] || [ -f "$ALT_RENDER" ] || [ -d "$ALT_SHADER_DIR" ]; then
         say ""
         say "--- CarPlay map in the cluster: removing an earlier install ---"
-        rm -f "$ALT_ON" "$ALT_SUP" "$ALT_RENDER" /mnt/app/altscreen_cluster_off
+        rm -f "$ALT_ON" "$ALT_SUP" "$ALT_RENDER" "$ALT_FORCE" /mnt/app/altscreen_cluster_off
         if [ -d "$ALT_SHADER_DIR" ]; then
             rm -f "$ALT_SHADER_DIR"/*.bin 2>/dev/null
             rm -r "$ALT_SHADER_DIR" 2>/dev/null

@@ -7,6 +7,8 @@ page, with a ready-made SD card archive.
 
 - The installer checks for another mod's `LD_PRELOAD` in `dio_manager` before changing
   anything. Before, it found it only after the jars were already copied.
+- An empty `WIRELESS_MAP` file on the card offers the cluster map to wireless adapters
+  that do not ask for it, such as the Carlinkit 2Air (#25). Off by default.
 
 ## v1.0.0 — 2026-10-15
 
