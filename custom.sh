@@ -21,7 +21,8 @@
 # on the card beside install.sh; to leave out only the CarPlay map in the
 # cluster, one named NO_ALTSCREEN.  An empty WIRELESS_MAP file offers the
 # cluster map to a wireless adapter that does not ask for it (see the wiki,
-# Compatibility).  If the installer stops on jars it does not
+# Compatibility).  An empty PDC file installs the parking popup beside CarPlay
+# on firmware it was not checked against.  If the installer stops on jars it does not
 # know and you are sure they are harmless, an empty IGNORE_CONFLICTS file lets
 # it go on.  There is no way to pass an environment
 # variable through the M.I.B. menu, and the files combine.
@@ -91,12 +92,17 @@ else
         echo "WIRELESS_MAP marker present - offering the cluster map to wireless adapters"
         W=1
     fi
+    P=auto
+    if [ -f "$PAYLOAD/PDC" ]; then
+        echo "PDC marker present - installing the parking popup beside CarPlay on any firmware"
+        P=1
+    fi
     I=0
     if [ -f "$PAYLOAD/IGNORE_CONFLICTS" ]; then
         echo "IGNORE_CONFLICTS marker present - unknown jars will not stop the install"
         I=1
     fi
-    SRC_DIR="$PAYLOAD" RGI=$R SPORT=$S ALTSCREEN=$A WIRELESS_MAP=$W IGNORE_CONFLICTS=$I sh "$PAYLOAD/install.sh"
+    SRC_DIR="$PAYLOAD" RGI=$R SPORT=$S ALTSCREEN=$A WIRELESS_MAP=$W PDC=$P IGNORE_CONFLICTS=$I sh "$PAYLOAD/install.sh"
 fi
 
 echo ""

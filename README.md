@@ -14,7 +14,8 @@ CarPlay additions for Audi MHI2 head units on the **`MHI2_ER_AU37x`** train:
   favourites, signal and carrier. The **Tel** key and the phone menu go straight to
   CarPlay, and a **short press of the voice key** starts Siri.
 - **Parking sensors over CarPlay** — the side sensors open their small popup beside
-  CarPlay instead of taking the whole screen.
+  CarPlay instead of taking the whole screen. Installed by default on the firmware it
+  was checked against (P5089, Q2 P5088).
 
 Prebuilt binaries, installed from an M.I.B. SD card or over a network cable.
 
@@ -90,6 +91,7 @@ Running the installer again upgrades in place.
 | leave out route guidance and the cluster map | `RGI=0 sh install.sh` | `NO_RGI` |
 | leave out only the cluster map | `ALTSCREEN=0 sh install.sh` | `NO_ALTSCREEN` |
 | offer the cluster map to a wireless adapter that does not ask for it | `WIRELESS_MAP=1 sh install.sh` | `WIRELESS_MAP` |
+| install the parking popup beside CarPlay on firmware other than P5089 / Q2 P5088 | `PDC=1 sh install.sh` | `PDC` |
 | let unknown jars through | `IGNORE_CONFLICTS=1 sh install.sh` | `IGNORE_CONFLICTS` |
 
 Step by step, and what gets changed on the unit:

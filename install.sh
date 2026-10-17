@@ -14,9 +14,9 @@
 #      M.I.B.'s NavActiveIgnore jar is switched off, uninstall puts it back.
 #   1. Remounts /mnt/app and /mnt/system read-write.
 #   2. Backs up every file it is going to change, once, as <file>.orig.
-#   3. Copies the jars into the HMI's jar directory (D-pad, cover art, and the
-#      parking-sensor popup over CarPlay) and the native hooks into
-#      /mnt/app/eso/hmi/lib.
+#   3. Copies the jars into the HMI's jar directory (D-pad, cover art, and, on
+#      firmware it was checked against, the parking-sensor popup beside CarPlay)
+#      and the native hooks into /mnt/app/eso/hmi/lib.
 #   4. Adds LD_PRELOAD for the cover-art hook to the carplay child in
 #      smartphone_integrator.json - line-based, no sed (the unit has none).
 #   5. Installs route guidance (RGI): the RGI jar, the cluster renderer with its
@@ -76,6 +76,13 @@ ALT_ON=/mnt/app/altscreen_inject
 WIRELESS_MAP=${WIRELESS_MAP:-0}
 ALT_FORCE=/mnt/app/altscreen_force
 
+# The parking-sensor popup beside CarPlay replaces seven stock HMI classes, and
+# other firmware carries other versions of them: on CN P0916 the HMI never came
+# up (#27), on Q2 P5600 two of them differ too.  So it goes in only on firmware
+# whose classes were checked against it; PDC=1 (an empty PDC file on the card)
+# forces it, PDC=0 leaves it out, and leaving it out removes an earlier copy.
+PDC=${PDC:-auto}
+
 # Force the sport cluster layout (1) or the classic one (0). Unset means "leave
 # whatever is already there", which is what an upgrade wants.
 SPORT=${SPORT:-}
@@ -111,7 +118,7 @@ if [ -f "$SRC_DIR/VERSION" ]; then
 fi
 
 # ---------------------------------------------------------------- payload
-for f in coverart_hook.jar dpad_hook.jar pdc_hook.jar libcarplay_hook.so; do
+for f in coverart_hook.jar dpad_hook.jar libcarplay_hook.so; do
     [ -f "$BIN_DIR/$f" ] || die "missing payload file: $BIN_DIR/$f"
 done
 
@@ -205,6 +212,17 @@ case "$TRAIN_OK" in
        say "!! Please open an issue and attach this log."
        die "firmware train unknown" ;;
 esac
+
+if [ "$PDC" = "auto" ]; then
+    case "$TRAIN" in
+        MHI2_ER_AU37[xX]_P5089*|MHI2_ER_AU276_P5088*) PDC=1 ;;
+        *) PDC=0
+           say "parking popup beside CarPlay: not checked on this firmware - left out (PDC=1 forces it)" ;;
+    esac
+fi
+if [ "$PDC" = "1" ] && [ ! -f "$BIN_DIR/pdc_hook.jar" ]; then
+    die "missing payload file: $BIN_DIR/pdc_hook.jar (or set PDC=0)"
+fi
 
 if [ ! -f /mnt/app/armle/usr/lib/libiap2client.so.1 ]; then
     say "!! WARNING: libiap2client.so.1 not found."
@@ -375,7 +393,6 @@ say "--- copying files ---"
 
 cp "$BIN_DIR/dpad_hook.jar" "$JARS_DIR/dpad_hook.jar" || die "copy dpad_hook.jar failed"
 cp "$BIN_DIR/coverart_hook.jar" "$JARS_DIR/coverart_hook.jar" || die "copy coverart_hook.jar failed"
-cp "$BIN_DIR/pdc_hook.jar" "$JARS_DIR/pdc_hook.jar" || die "copy pdc_hook.jar failed"
 
 # The hook goes in via rename, not a plain cp over the top. On an upgrade
 # dio_manager may be running right now with the old .so mapped, and writing
@@ -391,11 +408,18 @@ mv "$SO_DEST.new" "$SO_DEST" || die "could not put libcarplay_hook.so in place"
 # card, which carries no Unix modes at all. Every stock file in the jars
 # directory is world-readable (-rwxrwxrwx root:root), so an unreadable jar
 # would simply be skipped by lsd with no error anywhere.
-chmod 755 "$JARS_DIR/dpad_hook.jar" "$JARS_DIR/coverart_hook.jar" "$JARS_DIR/pdc_hook.jar" "$SO_DEST"
+chmod 755 "$JARS_DIR/dpad_hook.jar" "$JARS_DIR/coverart_hook.jar" "$SO_DEST"
 
 say "ok: $JARS_DIR/dpad_hook.jar"
 say "ok: $JARS_DIR/coverart_hook.jar"
-say "ok: $JARS_DIR/pdc_hook.jar"
+if [ "$PDC" = "1" ]; then
+    cp "$BIN_DIR/pdc_hook.jar" "$JARS_DIR/pdc_hook.jar" || die "copy pdc_hook.jar failed"
+    chmod 755 "$JARS_DIR/pdc_hook.jar"
+    say "ok: $JARS_DIR/pdc_hook.jar"
+elif [ -f "$JARS_DIR/pdc_hook.jar" ]; then
+    rm -f "$JARS_DIR/pdc_hook.jar" && say "removed: $JARS_DIR/pdc_hook.jar (parking popup left out)" \
+        || say "!! could not remove $JARS_DIR/pdc_hook.jar"
+fi
 say "ok: $SO_DEST"
 
 # ---------------------------------------------------------------- config
@@ -695,7 +719,8 @@ rm -f /mnt/app/carplay_verbose /mnt/app/carplay_log_persist \
 # ---------------------------------------------------------------- done
 say ""
 say "--- installed files ---"
-ls -l "$JARS_DIR/dpad_hook.jar" "$JARS_DIR/coverart_hook.jar" "$JARS_DIR/pdc_hook.jar" "$SO_DEST" 2>&1 | while IFS= read -r l; do say "$l"; done
+ls -l "$JARS_DIR/dpad_hook.jar" "$JARS_DIR/coverart_hook.jar" "$SO_DEST" 2>&1 | while IFS= read -r l; do say "$l"; done
+[ "$PDC" = "1" ] && ls -l "$JARS_DIR/pdc_hook.jar" 2>&1 | while IFS= read -r l; do say "$l"; done
 if [ "$RGI" != "0" ]; then
     ls -l "$RGD_JAR" "$RGD_SO" "$RENDER" "$ATLAS" "$BLANK" "$SUPERVISOR" "$SBIN/mm-ipod" 2>&1 \
         | while IFS= read -r l; do say "$l"; done

@@ -3,6 +3,16 @@
 Each release is on the [Releases](https://github.com/chefranov/mhi2-au37x-carplay/releases)
 page, with a ready-made SD card archive.
 
+## v1.1.2 — 2026-10-17
+
+- **The parking popup beside CarPlay is installed only on firmware it was checked
+  against** (P5089, Q2 P5088). It replaces stock HMI classes, and on other firmware they
+  differ: on CN P0916 v1.1.0 left the unit on the start logo (#27). Elsewhere the
+  installer leaves it out and removes a copy an earlier release put there; `PDC=1`, or an
+  empty `PDC` file on the card, installs it anyway.
+- The cluster-map worker no longer spins while the cluster's display manager is still
+  starting. It used about 10 % CPU for the first minute after every start (#26).
+
 ## v1.1.1 — 2026-10-17
 
 - **The missed-call indicator in the cluster clears.** The Tel key on the steering wheel
