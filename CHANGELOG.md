@@ -9,6 +9,8 @@ page, with a ready-made SD card archive.
   anything. Before, it found it only after the jars were already copied.
 - An empty `WIRELESS_MAP` file on the card offers the cluster map to wireless adapters
   that do not ask for it, such as the Carlinkit 2Air (#25). Off by default.
+- Off the route the cluster tile shows no maneuver instead of a straight arrow that
+  pointed nowhere: CarPlay sends no direction to the route.
 
 ## v1.0.0 — 2026-10-15
 
