@@ -141,7 +141,7 @@ rm -f /mnt/app/altscreen_inject /mnt/app/altscreen_force /mnt/app/altscreen_clus
 
 say ""
 say "--- removing files ---"
-for f in "$JARS_DIR/coverart_hook.jar" "$JARS_DIR/dpad_hook.jar" "$SO_DEST"; do
+for f in "$JARS_DIR/coverart_hook.jar" "$JARS_DIR/dpad_hook.jar" "$JARS_DIR/pdc_hook.jar" "$SO_DEST"; do
     if [ -f "$f" ]; then
         rm -f "$f" && say "removed: $f" || say "!! could not remove $f"
     else

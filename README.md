@@ -9,6 +9,12 @@ CarPlay additions for Audi MHI2 head units on the **`MHI2_ER_AU37x`** train:
   the arrow, the distance, the street and lane guidance, drawn live in 3D.
 - **Cover art** — CarPlay album artwork on the cluster's now-playing widget.
 - **Touchpad → D-pad** — the MMI touchpad navigates CarPlay menus.
+- **Phone tab in the cluster** — CarPlay calls in the cluster's phone tab as with a
+  Bluetooth phone: caller, call state and timer, accept, end, hold, mute, recents and
+  favourites, signal and carrier. The **Tel** key and the phone menu go straight to
+  CarPlay, and a **short press of the voice key** starts Siri.
+- **Parking sensors over CarPlay** — the side sensors open their small popup beside
+  CarPlay instead of taking the whole screen.
 
 Prebuilt binaries, installed from an M.I.B. SD card or over a network cable.
 
@@ -96,6 +102,8 @@ Step by step, and what gets changed on the unit:
   choice survives the ignition.
 - **Route guidance**: start a route on the phone. Off without uninstalling:
   `touch /mnt/app/rgd_disable` and reboot; delete the file to turn it back on.
+- **Siri**: a short press of the voice key on the steering wheel; a long press works as
+  before.
 - **Sport layout** is detected by itself. To force it: `touch /mnt/app/rgd_sport`
   (`SPORT=1` / an empty `SPORT` file at install time).
 
@@ -113,8 +121,9 @@ install, and the same M.I.B. menu item. Reboot.
 ## Credits
 
 - [luka-dev/mib2q-carplay-rgi](https://github.com/luka-dev/mib2q-carplay-rgi) — the HMI
-  patch pattern, the cover-art pipeline, the route-guidance BAP work and the maneuver
-  renderer, here ported to the HARMAN iAP2 stack.
+  patch pattern, the cover-art pipeline, the route-guidance BAP work, the maneuver
+  renderer and lane guidance, the cluster phone tab and Siri, and the parking popup,
+  here ported to the HARMAN iAP2 stack.
 - [Mich795](https://github.com/Mich795) — cover-art fixes from a version of their own.
 - [aberbic](https://github.com/aberbic/Audi-MHI2-Virtual-Cockpit-Altscreen-CarPlay-AndroidAuto)
   — the hardware-decoder layer setup that lit the cluster map.

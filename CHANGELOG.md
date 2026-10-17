@@ -3,14 +3,31 @@
 Each release is on the [Releases](https://github.com/chefranov/mhi2-au37x-carplay/releases)
 page, with a ready-made SD card archive.
 
-## Unreleased
+## v1.1.0 — 2026-10-17
 
-- The installer checks for another mod's `LD_PRELOAD` in `dio_manager` before changing
-  anything. Before, it found it only after the jars were already copied.
+- **The cluster's phone tab works with CarPlay.** Instead of "Your iPhone is in Apple
+  CarPlay mode" it shows calls as with a Bluetooth phone: caller and number, calling,
+  ringing, in call with a timer, on hold. Accept, end, hold, swap, mute and dialling from
+  recents and favourites work from the cluster, and it shows the phone's signal and
+  carrier.
+- **The Tel key goes straight to CarPlay**, with no "Switch to Apple CarPlay" popup, and
+  so does Phone in the main menu.
+- **Siri on a short press of the voice key.** A long press works as before; without
+  CarPlay the short press starts the car's own voice control.
+- **Parking sensors keep CarPlay on screen.** The side sensors open their popup beside
+  CarPlay instead of the full parking screen. Reverse gear is unchanged.
+- **No empty maneuver tile off the road.** With a route on the phone but the car off it,
+  the cluster closes its maneuver tile instead of showing a straight arrow that pointed
+  nowhere; it comes back with the first turn.
+- **Lane guidance along the whole route**, not only at its start, with lane arrows drawn
+  like the stock head-up display's.
 - An empty `WIRELESS_MAP` file on the card offers the cluster map to wireless adapters
   that do not ask for it, such as the Carlinkit 2Air (#25). Off by default.
-- Off the route the cluster tile shows no maneuver instead of a straight arrow that
-  pointed nowhere: CarPlay sends no direction to the route.
+- The installer checks for another mod's `LD_PRELOAD` in `dio_manager` before changing
+  anything. Before, it found it only after the jars were already copied.
+
+Known: a missed call lights the cluster's missed-call indicator, and opening the list in
+the cluster does not clear it yet; it clears with the next answered or outgoing call.
 
 ## v1.0.0 — 2026-10-15
 
