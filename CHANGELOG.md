@@ -3,6 +3,31 @@
 Each release is on the [Releases](https://github.com/chefranov/mhi2-au37x-carplay/releases)
 page, with a ready-made SD card archive.
 
+## v1.1.3 — 2026-10-18
+
+- **CarPlay no longer drops over a wireless adapter.** After a minute of silence from the
+  phone, for example after a route was cancelled, the hook asked for route guidance
+  again. A wireless adapter never acknowledges that second request; the request was
+  resent until the USB link gave out, and CarPlay went down a few minutes later. The
+  repeat request came with v1.1.0 and is now off.
+- **Calling a favourite from the cluster works** (#29). The iPhone sends favourites with
+  the number as the contact spells it, `+48 600 123 456` or `(600) 123-456`, and iOS
+  ignored that as a phone number. The number is now cleaned before dialling.
+- **A short press of the left roller** swaps the line under the maneuver between the
+  next street and the arrival time with the time left. `touch /mnt/app/rgd_eta_default`
+  starts each route on the arrival time (#25).
+- **The phone's cluster URL in `altscreen_url` stays** when the phone suggests another
+  one (#25).
+- No straight arrow off the road with Google Maps when the route starts with its
+  "start" step and no distance.
+- The finish flag goes away 30 s after the phone falls silent next to the destination,
+  for when the phone's closing message is lost.
+- `touch /mnt/app/rgd_no_tel` now turns the whole cluster phone tab back to stock, not
+  only the iPhone lists.
+- Under test for #28 (night map in the cluster in daylight), off by default:
+  `touch /mnt/app/altscreen_night_resend` sends the day/night state to the phone again
+  once the cluster map is up.
+
 ## v1.1.2 — 2026-10-17
 
 - **The parking popup beside CarPlay is installed only on firmware it was checked

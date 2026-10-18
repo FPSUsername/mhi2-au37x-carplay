@@ -102,8 +102,14 @@ Step by step, and what gets changed on the unit:
 - **Cluster map**: comes up with the phone, after a short intro. A **long press of the
   left steering-wheel roller** swaps between the CarPlay map and the stock one; the
   choice survives the ignition.
-- **Route guidance**: start a route on the phone. Off without uninstalling:
-  `touch /mnt/app/rgd_disable` and reboot; delete the file to turn it back on.
+- **Route guidance**: start a route on the phone. A **short press of the left roller**
+  swaps the line under the maneuver between the next street and the arrival time with
+  the time left; to start on the arrival time, `touch /mnt/app/rgd_eta_default`. Off
+  without uninstalling: `touch /mnt/app/rgd_disable` and reboot; delete the file to turn
+  it back on.
+- **Phone tab in the cluster**: with CarPlay it shows the iPhone's calls, recents and
+  favourites. Back to stock ("iPhone in CarPlay mode"): `touch /mnt/app/rgd_no_tel` and
+  reboot.
 - **Siri**: a short press of the voice key on the steering wheel; a long press works as
   before.
 - **Sport layout** is detected by itself. To force it: `touch /mnt/app/rgd_sport`
