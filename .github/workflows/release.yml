@@ -22,6 +22,7 @@ jobs:
           mkdir -p stage/mod/carplay dist
           cp custom.sh command.sh stage/mod/
           cp -r install.sh uninstall.sh bin stage/mod/carplay/
+          if [ -d bin-aug22 ]; then cp -r bin-aug22 stage/mod/carplay/; fi
           echo "$VER" > stage/mod/carplay/VERSION
           (cd stage && zip -q -r -X ../dist/mhi2-au37x-carplay-$VER-sd.zip mod)
           # The same card with the UNINSTALL marker: running the script removes
@@ -29,7 +30,7 @@ jobs:
           touch stage/mod/carplay/UNINSTALL
           (cd stage && zip -q -r -X ../dist/mhi2-au37x-carplay-$VER-uninstall-sd.zip mod)
           (cd dist && sha256sum *.zip) > dist/SHA256SUMS
-          (cd stage/mod/carplay && find bin -type f | LC_ALL=C sort | xargs sha256sum) >> dist/SHA256SUMS
+          (cd stage/mod/carplay && find bin bin-aug22 -type f 2>/dev/null | LC_ALL=C sort | xargs sha256sum) >> dist/SHA256SUMS
 
       - name: Release notes from CHANGELOG.md
         run: |
