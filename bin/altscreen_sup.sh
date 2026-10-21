@@ -30,9 +30,14 @@ mount -uw /mnt/app 2>/dev/null
 
 while [ -f "$MARKER" ]; do
     "$BIN" --listen >> "$LOG" 2>&1
+    rc=$?
     # A dead renderer must not leave the cluster on a context whose map
     # window is gone.
     rm -f "$FLAG"
-    sleep 2
+    # 0 is a planned restart - one hardware decoder per process, so every new
+    # sender or picture size takes a fresh one - and the hook is already
+    # reconnecting: two seconds here were two seconds of the stock map.  A
+    # crash still waits.
+    [ "$rc" -eq 0 ] || sleep 2
 done
 rm -f "$LOCK"

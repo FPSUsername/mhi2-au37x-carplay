@@ -80,10 +80,12 @@ ALT_FORCE=/mnt/app/altscreen_force
 
 # The parking-sensor popup beside CarPlay replaces seven stock HMI classes, and
 # other firmware carries other versions of them: on CN P0916 the HMI never came
-# up (#27), on Q2 P5600 two of them differ too.  So it goes in only on firmware
-# whose classes were checked against it; PDC=1 (an empty PDC file on the card)
-# forces it, PDC=0 leaves it out, and leaving it out removes an earlier copy.
-PDC=${PDC:-auto}
+# up (#27), on Q2 P5600 two of them differ too, and forcing it onto such
+# firmware is what kept leaving units on the start logo.  So it is off unless
+# asked for: PDC=1 (an empty PDC file on the card) installs it, and only on
+# firmware whose classes were checked against it.  Left out, an earlier copy is
+# removed.
+PDC=${PDC:-0}
 
 # Force the sport cluster layout (1) or the classic one (0). Unset means "leave
 # whatever is already there", which is what an upgrade wants.
@@ -245,12 +247,15 @@ else
     say "route guidance: SKIPPED (RGI=0)"
 fi
 
-if [ "$PDC" = "auto" ]; then
+if [ "$PDC" = "1" ]; then
     case "$TRAIN" in
-        MHI2_ER_AU37[xX]_P5089*|MHI2_ER_AU276_P5088*) PDC=1 ;;
+        MHI2_ER_AU37[xX]_P5089*|MHI2_ER_AU276_P5088*) ;;
         *) PDC=0
-           say "parking popup beside CarPlay: not checked on this firmware - left out (PDC=1 forces it)" ;;
+           say "parking popup beside CarPlay: not checked on this firmware - left out" ;;
     esac
+else
+    PDC=0
+    say "parking popup beside CarPlay: off (PDC=1 installs it on P5089 / Q2 P5088)"
 fi
 if [ "$PDC" = "1" ] && [ ! -f "$BIN_DIR/pdc_hook.jar" ]; then
     die "missing payload file: $BIN_DIR/pdc_hook.jar (or set PDC=0)"

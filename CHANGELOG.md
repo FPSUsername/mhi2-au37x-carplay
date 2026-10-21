@@ -3,6 +3,37 @@
 Each release is on the [Releases](https://github.com/chefranov/mhi2-au37x-carplay/releases)
 page, with a ready-made SD card archive.
 
+## v1.1.4 — 2026-10-21
+
+- **The maneuver in the cluster follows the cluster's own tile.** The head unit now
+  listens to the cluster saying when it raises and drops the maneuver tile, and on
+  which stage, instead of guessing with timers. The maneuver appears and goes together
+  with the tile, with no window hanging in the air and no empty plate, and moves at
+  once when View switches between the wide tile and the speedometer well.
+- **Google Maps' maneuver card is back in the small stages** of the CarPlay map in
+  the cluster, Sport and Classic. The area reserved for it was 20 px too short, and
+  Google Maps drew the card empty.
+- **A route in the head unit's own navigation while the CarPlay map is in the
+  cluster** now switches the cluster to the stock map with its own maneuver tile, and
+  back to the CarPlay map when that route ends. Before, the stock tile showed as a
+  hole in the CarPlay map.
+- **The CarPlay map in the cluster recovers by itself** from a lost or late frame: the
+  head unit asks the phone for a fresh key frame instead of showing the stock map, and
+  the cluster video is decoded at a higher priority. Behind a wireless adapter that does
+  not take the cluster layout, the Sport well no longer shows the left edge of the
+  large map (#38).
+- **Day and night for the cluster map** are now sent to the cluster display as well
+  as to the main screen, and a stale day/night value is no longer offered to the phone
+  after a restart (#28). Still to be confirmed in daylight.
+- **The head unit no longer treats CarPlay navigation as taking its own over**, the
+  way M.I.B.'s NavActiveIgnore does, but for navigation only: calls and Siri are left
+  alone. While a CarPlay route runs, a route set in the head unit's navigation waits
+  until the CarPlay route ends. `touch /mnt/app/rgd_no_navignore` turns this off.
+- **The parking popup beside CarPlay is now off by default** and installed only on
+  request, `PDC=1` or an empty `PDC` file on the card, and still only on P5089 and Q2
+  P5088. `PDC=1` no longer forces it onto other firmware: there it kept the HMI on the
+  start logo. Reinstalling without `PDC=1` removes a copy an earlier release put there.
+
 ## v1.1.3 — 2026-10-18
 
 - **CarPlay no longer drops over a wireless adapter.** After a minute of silence from the

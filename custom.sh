@@ -22,7 +22,7 @@
 # cluster, one named NO_ALTSCREEN.  An empty WIRELESS_MAP file offers the
 # cluster map to a wireless adapter that does not ask for it (see the wiki,
 # Compatibility).  An empty PDC file installs the parking popup beside CarPlay
-# on firmware it was not checked against.  If the installer stops on jars it does not
+# (P5089 and Q2 P5088 only).  If the installer stops on jars it does not
 # know and you are sure they are harmless, an empty IGNORE_CONFLICTS file lets
 # it go on.  On AUG22 firmware an empty AUG22_TEST file installs the test build
 # for it (cover art and D-pad).  There is no way to pass an environment
@@ -93,9 +93,9 @@ else
         echo "WIRELESS_MAP marker present - offering the cluster map to wireless adapters"
         W=1
     fi
-    P=auto
+    P=0
     if [ -f "$PAYLOAD/PDC" ]; then
-        echo "PDC marker present - installing the parking popup beside CarPlay on any firmware"
+        echo "PDC marker present - installing the parking popup beside CarPlay (P5089 / Q2 P5088 only)"
         P=1
     fi
     I=0
