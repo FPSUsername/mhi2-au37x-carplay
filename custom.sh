@@ -88,6 +88,11 @@ else
         echo "NO_ALTSCREEN marker present - installing without the CarPlay map in the cluster"
         A=0
     fi
+    E=
+    if [ -f "$PAYLOAD/ETA_DEFAULT" ]; then
+        echo "ETA_DEFAULT marker present - the line under the maneuver starts on the arrival time"
+        E=1
+    fi
     W=0
     if [ -f "$PAYLOAD/WIRELESS_MAP" ]; then
         echo "WIRELESS_MAP marker present - offering the cluster map to wireless adapters"
@@ -108,7 +113,7 @@ else
         echo "AUG22_TEST marker present - the AUG22 test build may be installed"
         G=1
     fi
-    SRC_DIR="$PAYLOAD" RGI=$R SPORT=$S ALTSCREEN=$A WIRELESS_MAP=$W PDC=$P IGNORE_CONFLICTS=$I \
+    SRC_DIR="$PAYLOAD" RGI=$R SPORT=$S ETA_DEFAULT=$E ALTSCREEN=$A WIRELESS_MAP=$W PDC=$P IGNORE_CONFLICTS=$I \
         AUG22_TEST=$G sh "$PAYLOAD/install.sh"
 fi
 

@@ -91,6 +91,7 @@ Running the installer again upgrades in place.
 | leave out route guidance and the cluster map | `RGI=0 sh install.sh` | `NO_RGI` |
 | leave out only the cluster map | `ALTSCREEN=0 sh install.sh` | `NO_ALTSCREEN` |
 | offer the cluster map to a wireless adapter that does not ask for it | `WIRELESS_MAP=1 sh install.sh` | `WIRELESS_MAP` |
+| start the line under the maneuver on the arrival time | `ETA_DEFAULT=1 sh install.sh` | `ETA_DEFAULT` |
 | install the parking popup beside CarPlay (P5089 and Q2 P5088 only; off by default) | `PDC=1 sh install.sh` | `PDC` |
 | let unknown jars through | `IGNORE_CONFLICTS=1 sh install.sh` | `IGNORE_CONFLICTS` |
 
@@ -104,7 +105,8 @@ Step by step, and what gets changed on the unit:
   choice survives the ignition.
 - **Route guidance**: start a route on the phone. A **short press of the left roller**
   swaps the line under the maneuver between the next street and the arrival time with
-  the time left; to start on the arrival time, `touch /mnt/app/rgd_eta_default`. Off
+  the time left; to start on the arrival time, `touch /mnt/app/rgd_eta_default`
+  (`ETA_DEFAULT=1` / an empty `ETA_DEFAULT` file at install time). Off
   without uninstalling: `touch /mnt/app/rgd_disable` and reboot; delete the file to turn
   it back on.
 - **Phone tab in the cluster**: with CarPlay it shows the iPhone's calls, recents and

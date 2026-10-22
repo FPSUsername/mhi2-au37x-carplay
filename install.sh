@@ -91,6 +91,11 @@ PDC=${PDC:-0}
 # whatever is already there", which is what an upgrade wants.
 SPORT=${SPORT:-}
 
+# Start the line under the maneuver on the arrival time (1) or on the next
+# street (0); a short press of the left roller swaps them either way.  Unset
+# leaves what is there, as with SPORT.
+ETA_DEFAULT=${ETA_DEFAULT:-}
+
 # No `dirname` either - see the note in custom.sh.  ${0%/*} strips the last
 # /component, but leaves $0 untouched when it has no slash at all, so the
 # no-slash case has to pick "." explicitly.
@@ -668,6 +673,16 @@ SUP
         say "ok: classic cluster layout selected"
     elif [ -f /mnt/app/rgd_sport ]; then
         say "keeping the sport cluster layout (/mnt/app/rgd_sport is present)"
+    fi
+
+    if [ "$ETA_DEFAULT" = "1" ]; then
+        touch /mnt/app/rgd_eta_default || die "could not create /mnt/app/rgd_eta_default"
+        say "ok: the line under the maneuver starts on the arrival time (/mnt/app/rgd_eta_default)"
+    elif [ "$ETA_DEFAULT" = "0" ]; then
+        rm -f /mnt/app/rgd_eta_default
+        say "ok: the line under the maneuver starts on the next street"
+    elif [ -f /mnt/app/rgd_eta_default ]; then
+        say "keeping the arrival time first (/mnt/app/rgd_eta_default is present)"
     fi
 
     # The shim.  mm-ipod is started by usblauncher out of a config on flash,
