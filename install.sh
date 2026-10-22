@@ -454,13 +454,24 @@ chmod 755 "$JARS_DIR/dpad_hook.jar" "$JARS_DIR/coverart_hook.jar" "$SO_DEST"
 
 say "ok: $JARS_DIR/dpad_hook.jar"
 say "ok: $JARS_DIR/coverart_hook.jar"
+# The sensors popup's background without the black strip under its frame,
+# used only over CarPlay. Only the 800-px HMI has it (AU37x); elsewhere the
+# directory is missing and the stock background stays.
+PDC_BG_DIR=/mnt/app/eso/hmi/lsd/images/HMIEarlyAppsEvoHighScale
 if [ "$PDC" = "1" ]; then
     cp "$BIN_DIR/pdc_hook.jar" "$JARS_DIR/pdc_hook.jar" || die "copy pdc_hook.jar failed"
     chmod 755 "$JARS_DIR/pdc_hook.jar"
     say "ok: $JARS_DIR/pdc_hook.jar"
-elif [ -f "$JARS_DIR/pdc_hook.jar" ]; then
-    rm -f "$JARS_DIR/pdc_hook.jar" && say "removed: $JARS_DIR/pdc_hook.jar (parking popup left out)" \
-        || say "!! could not remove $JARS_DIR/pdc_hook.jar"
+    if [ -d "$PDC_BG_DIR" ] && [ -f "$BIN_DIR/2199999.png" ]; then
+        cp "$BIN_DIR/2199999.png" "$PDC_BG_DIR/2199999.png" && chmod 644 "$PDC_BG_DIR/2199999.png" \
+            && say "ok: $PDC_BG_DIR/2199999.png" || say "!! could not copy the parking popup background"
+    fi
+else
+    if [ -f "$JARS_DIR/pdc_hook.jar" ]; then
+        rm -f "$JARS_DIR/pdc_hook.jar" && say "removed: $JARS_DIR/pdc_hook.jar (parking popup left out)" \
+            || say "!! could not remove $JARS_DIR/pdc_hook.jar"
+    fi
+    rm -f "$PDC_BG_DIR/2199999.png" 2>/dev/null
 fi
 say "ok: $SO_DEST"
 

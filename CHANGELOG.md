@@ -3,6 +3,17 @@
 Each release is on the [Releases](https://github.com/chefranov/mhi2-au37x-carplay/releases)
 page, with a ready-made SD card archive.
 
+## v1.1.7 — 2026-10-22
+
+- **The parking-sensors popup over CarPlay no longer has a crooked black strip
+  under its frame** (with `PDC`). The stock background ends in a black band that
+  normally merges with the head unit's bottom bar; over CarPlay that bar is hidden,
+  so the band hung below the frame. A trimmed copy of the background is used only
+  while the popup sits on CarPlay; without CarPlay the popup is unchanged.
+- **The parking camera no longer switches the head unit to its main menu** behind
+  it while CarPlay is on (part of #42). Getting back to CarPlay after reverse while
+  the sensors stay on is still being worked on.
+
 ## v1.1.6 — 2026-10-22
 
 - **The TEL key on the MMI console now opens CarPlay on every press** (#13). Before,
