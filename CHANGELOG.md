@@ -3,6 +3,14 @@
 Each release is on the [Releases](https://github.com/chefranov/mhi2-au37x-carplay/releases)
 page, with a ready-made SD card archive.
 
+## v1.1.5 — 2026-10-22
+
+- **New install option `ETA_DEFAULT`**: the line under the maneuver starts on the
+  arrival time with the time left instead of the next street (#39). An empty
+  `ETA_DEFAULT` file on the card, or `ETA_DEFAULT=1 sh install.sh`. A short press of
+  the left roller still swaps the two. A reinstall without it keeps the setting;
+  uninstalling clears it.
+
 ## v1.1.4 — 2026-10-21
 
 - **The maneuver in the cluster follows the cluster's own tile.** The head unit now
