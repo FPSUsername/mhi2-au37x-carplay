@@ -3,6 +3,15 @@
 Each release is on the [Releases](https://github.com/chefranov/mhi2-au37x-carplay/releases)
 page, with a ready-made SD card archive.
 
+## v1.1.6 — 2026-10-22
+
+- **The TEL key on the MMI console now opens CarPlay on every press** (#13). Before,
+  a press while CarPlay was already on screen brought up the head unit's "Switch to
+  Apple CarPlay" screen, and only the press after that went to CarPlay, so it worked
+  every other time. The steering-wheel phone key and Phone in the main menu were not
+  affected. A fast double press may flash that screen for a moment, then returns to
+  CarPlay by itself.
+
 ## v1.1.5 — 2026-10-22
 
 - **New install option `ETA_DEFAULT`**: the line under the maneuver starts on the
