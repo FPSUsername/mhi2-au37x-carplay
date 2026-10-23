@@ -3,6 +3,15 @@
 Each release is on the [Releases](https://github.com/chefranov/mhi2-au37x-carplay/releases)
 page, with a ready-made SD card archive.
 
+## v1.1.8 — 2026-10-23
+
+- **The arrival-time line under the maneuver now shows the distance left too**
+  (#45): `ETA 17:42 | 23 min | 18 km`, in miles where the head unit is set to miles.
+  In the small/Sport layout the line is narrow and keeps one field.
+- **The AUG22 test build is gone.** The project covers the A3 8V (AU37x) and the Q2
+  (AU276) only; on AUG22 firmware the installer now stops like on any other
+  unsupported train.
+
 ## v1.1.7 — 2026-10-22
 
 - **The parking-sensors popup over CarPlay no longer has a crooked black strip
