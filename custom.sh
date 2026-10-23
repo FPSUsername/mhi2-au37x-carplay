@@ -24,9 +24,8 @@
 # Compatibility).  An empty PDC file installs the parking popup beside CarPlay
 # (P5089 and Q2 P5088 only).  If the installer stops on jars it does not
 # know and you are sure they are harmless, an empty IGNORE_CONFLICTS file lets
-# it go on.  On AUG22 firmware an empty AUG22_TEST file installs the test build
-# for it (cover art and D-pad).  There is no way to pass an environment
-# variable through the M.I.B. menu, and the files combine.
+# it go on.  There is no way to pass an environment variable through the
+# M.I.B. menu, and the files combine.
 
 set -u
 
@@ -108,13 +107,8 @@ else
         echo "IGNORE_CONFLICTS marker present - unknown jars will not stop the install"
         I=1
     fi
-    G=0
-    if [ -f "$PAYLOAD/AUG22_TEST" ]; then
-        echo "AUG22_TEST marker present - the AUG22 test build may be installed"
-        G=1
-    fi
     SRC_DIR="$PAYLOAD" RGI=$R SPORT=$S ETA_DEFAULT=$E ALTSCREEN=$A WIRELESS_MAP=$W PDC=$P IGNORE_CONFLICTS=$I \
-        AUG22_TEST=$G sh "$PAYLOAD/install.sh"
+        sh "$PAYLOAD/install.sh"
 fi
 
 echo ""

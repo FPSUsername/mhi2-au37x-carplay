@@ -58,7 +58,7 @@ elif grep "libcarplay_hook.so" "$CFG" > /dev/null 2>&1; then
                 echo "$head]," >> "$NEW"
                 ;;
             *LD_PRELOAD*libcarplay_hook.so*,)
-                # AUG22 keeps one entry per line (see install.sh).
+                # An array written one entry per line (see install.sh).
                 head=${line%%" \"LD_PRELOAD"*}
                 echo "$head" >> "$NEW"
                 ;;

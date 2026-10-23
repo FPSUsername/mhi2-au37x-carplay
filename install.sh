@@ -53,8 +53,6 @@ ATLAS=$LIB_DIR/flag_atlas.rgba
 BLANK=$LIB_DIR/rgd_blank.png
 SHADER_DIR=$LIB_DIR/shaders
 SUPERVISOR=$LIB_DIR/rgd_render_sup.sh
-# AUG22: the renderer hold was set once (see the AUG22 block below).
-RENDER_TRIED=$LIB_DIR/.rgd_render_hold_set
 SBIN=/mnt/app/armle/usr/sbin
 # Releases up to 2026-09-19 shipped ~5400 pre-drawn PNGs here, about 90 MB of
 # them. The renderer replaced the lot, so an upgrade deletes them.
@@ -134,16 +132,13 @@ fi
 # route guidance even compiles, and on the unit that is a black main screen.
 # So anything that is not MHI2_*_AU37x_* stops here, before a single write.
 # MHI2_*_AU276_* (Audi Q2) is let through: its HMI classes are identical, and
-# the release is confirmed working on a Q2.  MHI2_*_AUG22_* has a payload of
-# its own in bin-aug22/ (cover art and the D-pad only, built against its HMI),
-# installed only on request while nobody has run it on a car (AUG22_TEST=1).
+# the release is confirmed working on a Q2.
 #
 # Two sources, the way M.I.B. reads them.  First the text file the software
 # update leaves on rcc's persist partition; then the EEPROM, 19 bytes at 0x3A0,
 # through modifyE2P on rcc.  The unit has no xxd, sed, tr or printf, so the
-# EEPROM bytes are compared as hex: "MHI2_" at 0..4, "_AU37x_", "_AU276_"
-# or "_AUG22_" at 7..13.  A
-# trailing CR in the text file is harmless: the pattern ends in *.
+# EEPROM bytes are compared as hex: "MHI2_" at 0..4, "_AU37x_" or "_AU276_"
+# at 7..13.  A trailing CR in the text file is harmless: the pattern ends in *.
 TRAIN=""
 for f in /net/rcc/mnt/efs-persist/SWDL/CachedTrain.txt /mnt/efs-persist/SWDL/CachedTrain.txt; do
     if [ -f "$f" ]; then
@@ -153,10 +148,8 @@ for f in /net/rcc/mnt/efs-persist/SWDL/CachedTrain.txt /mnt/efs-persist/SWDL/Cac
 done
 
 TRAIN_OK=""
-FAMILY=""
 case "$TRAIN" in
     MHI2_*_AU37[xX]_*|MHI2_*_AU276_*) TRAIN_OK=1 ;;
-    MHI2_*_AUG22_*) TRAIN_OK=1; FAMILY=aug22 ;;
     "") ;;
     *) TRAIN_OK=0 ;;
 esac
@@ -173,8 +166,6 @@ if [ -z "$TRAIN_OK" ]; then
             TRAIN_OK=1; TRAIN="MHI2_??_AU37x_* (from EEPROM)" ;;
         " 4"[dD]" 48 49 32 5"[fF]" "??" "??" 5"[fF]" 41 55 32 37 36 5"[fF]*)
             TRAIN_OK=1; TRAIN="MHI2_??_AU276_* (from EEPROM)" ;;
-        " 4"[dD]" 48 49 32 5"[fF]" "??" "??" 5"[fF]" 41 55 47 32 32 5"[fF]*)
-            TRAIN_OK=1; FAMILY=aug22; TRAIN="MHI2_??_AUG22_* (from EEPROM)" ;;
         "") ;;
         *) TRAIN_OK=0; TRAIN="(EEPROM bytes:$HEX)" ;;
     esac
@@ -183,8 +174,7 @@ fi
 case "$TRAIN_OK" in
     1) say "firmware train: $TRAIN - ok" ;;
     0) say "!! firmware train: $TRAIN"
-       say "!! These patches are for MHI2_*_AU37x_*, MHI2_*_AU276_* and (test build)"
-       say "!! MHI2_*_AUG22_* firmware only."
+       say "!! These patches are for MHI2_*_AU37x_* and MHI2_*_AU276_* firmware only."
        say "!! They replace stock HMI classes of that firmware, and on another train"
        say "!! they can leave the main screen black. See"
        say "!! https://github.com/chefranov/mhi2-au37x-carplay/wiki/Compatibility"
@@ -194,29 +184,6 @@ case "$TRAIN_OK" in
        say "!! Please open an issue and attach this log."
        die "firmware train unknown" ;;
 esac
-
-# AUG22: its own payload, and only the parts built and checked against its HMI.
-# The cluster map hooks libairplay at offsets of another build, and the parking
-# popup replaces classes that differ there, so both stay out whatever the
-# switches say.  Route guidance goes in (RGI=0 still leaves it out), with two
-# restraints: no phone tab (the AUG22 jar has none, so the hook must not ask
-# the phone for call lists either), and the cluster renderer held - its shaders
-# are compiled blobs taken from the P5089 graphics driver, AUG22 runs an older
-# one, and a blob the driver takes but cannot run hangs the GPU and reboots
-# the unit.  Deleting the hold marker lets it run; see issue #17.
-if [ "$FAMILY" = "aug22" ]; then
-    if [ "${AUG22_TEST:-0}" != "1" ]; then
-        say "!! AUG22 firmware: the build for it (cover art, D-pad, route guidance) has not been run"
-        say "!! on a car yet.  To be its first tester, run again with AUG22_TEST=1 (an"
-        say "!! empty AUG22_TEST file next to install.sh on the card) - ideally with a"
-        say "!! USB Ethernet adapter at hand, see"
-        say "!! https://github.com/chefranov/mhi2-au37x-carplay/issues/17"
-        die "AUG22 test build not requested"
-    fi
-    BIN_DIR=$SRC_DIR/bin-aug22
-    ALTSCREEN=0; PDC=0
-    say "AUG22 test build: no cluster map, no parking popup, payload $BIN_DIR"
-fi
 
 # ---------------------------------------------------------------- payload
 say "payload: $BIN_DIR"
@@ -480,9 +447,9 @@ say "ok: $SO_DEST"
 #   "envs":["LD_LIBRARY_PATH=...", "IPL_CONFIG_DIR_DIO_MANAGER=/etc/eso/production"],
 # We append our LD_PRELOAD to that array. Line-based, because the unit has no
 # sed and no awk; the file is written one key per line, so this is safe.
-# AUG22 writes the same array one entry per line, the IPL entry last and the
-# closing bracket on a line of its own, so there the entry goes after it with
-# no bracket.
+# Should the array be written one entry per line, the IPL entry last and the
+# closing bracket on a line of its own, the entry goes after it with no
+# bracket.
 say ""
 say "--- smartphone_integrator.json ---"
 
@@ -611,8 +578,6 @@ export LD_LIBRARY_PATH
 cd /mnt/app/eso/hmi/lib 2>/dev/null
 
 [ -f /mnt/app/rgd_disable ] && exit 0
-# Held: installed, not started (the AUG22 test build, see install.sh).
-[ -f /mnt/app/rgd_render_hold ] && exit 0
 
 if [ -f "$LOCK" ]; then
     read old < "$LOCK"
@@ -636,21 +601,6 @@ SUP
     chmod 755 "$SUPERVISOR.new"
     mv "$SUPERVISOR.new" "$SUPERVISOR" || die "could not install $SUPERVISOR"
     say "ok: $SUPERVISOR"
-
-    if [ "$FAMILY" = "aug22" ]; then
-        # Set once, on the first install; a tester who removed it keeps it removed.
-        if [ ! -f "$RENDER_TRIED" ]; then
-            touch /mnt/app/rgd_render_hold "$RENDER_TRIED" \
-                || die "could not hold the cluster renderer"
-            say "ok: cluster renderer installed but HELD (/mnt/app/rgd_render_hold) - see issue #17"
-        elif [ -f /mnt/app/rgd_render_hold ]; then
-            say "cluster renderer still held (/mnt/app/rgd_render_hold)"
-        else
-            say "cluster renderer released by hand earlier - leaving it so"
-        fi
-        touch /mnt/app/rgd_no_tel || die "could not create /mnt/app/rgd_no_tel"
-        say "ok: no phone tab in this build (/mnt/app/rgd_no_tel)"
-    fi
 
     # Upgrade from a release that drew maneuvers from pre-drawn pictures: about
     # 90 MB of PNGs in three sets, which nothing reads any more. Explicit paths
